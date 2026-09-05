@@ -1,0 +1,5 @@
+.hub-return { display: inline-flex; align-items: center; justify-content: center; padding: 10px 15px; margin: 0 0 18px; min-height: 42px; border: 1px solid var(--inkDim); border-radius: 8px; color: var(--ink); background: var(--paper2); font: 500 14px/1.3 var(--fontMono); text-decoration: none; transition: background .18s ease, transform .18s ease; }
+.hub-return:hover { background: var(--paper3); transform: translateX(-2px); }
+.hub-return:focus-visible { outline: 3px solid var(--gold); outline-offset: 4px; }
+.title-panel.menu-wide { max-height: 92dvh; overflow-y: auto; }
+@media (prefers-reduced-motion: reduce) { .hub-return { transition: none; } }
