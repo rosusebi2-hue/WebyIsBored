@@ -1,6 +1,8 @@
-import { CHAPTER_NODES } from './chapter.js?v=2.3.0';
-export { CHAPTER_ROUTE, KEEPSAKES, MEMORIES, keepsakeUnlocked } from './chapter.js?v=2.3.0';
-export const VERSION = '2.3.0';
+import { CHAPTER_NODES } from './chapter.js?v=2.4.0';
+import { HARBOR_NODES, HARBOR_LAYOUTS } from './harbor.js?v=2.4.0';
+export { HARBOR_ROUTE, HARBOR_CHOICES } from './harbor.js?v=2.4.0';
+export { CHAPTER_ROUTE, KEEPSAKES, MEMORIES, keepsakeUnlocked } from './chapter.js?v=2.4.0';
+export const VERSION = '2.4.0';
 export const WORLD = { width: 960, height: 600, inset: 46 };
 export const TAU = Math.PI * 2;
 export const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
@@ -12,6 +14,9 @@ export const WEAPONS = {
   emberbrand: { name: 'Emberbrand', tag: 'FAST · BURNING INK', icon: '✳', color: '#ffad78', description: 'A short, fast blade. Every hit burns for 14 extra damage over two seconds. Hits refresh the burn.', detail: '13 / 13 / 22 damage · short reach', damage: [13, 13, 22], range: [78, 78, 93], cooldown: [.24, .24, .37], duration: [.18, .18, .25], arc: [2.2, 2.2, 2.8] },
 };
 export const ENEMIES = {
+  mender: { name: 'Ink Mender', hp: 72, speed: 52, radius: 18, damage: 10, color: '#79e5d4', ink: 6 },
+  leech: { name: 'Paper Leech', hp: 88, speed: 72, radius: 19, damage: 12, color: '#b7a5ff', ink: 6 },
+  tidekeeper: { name: 'The Tidekeeper', hp: 1800, speed: 50, radius: 32, damage: 20, color: '#6ed9f2', ink: 45, boss: true },
   scrapper: { name: 'Scrapper', hp: 54, speed: 88, radius: 17, damage: 13, color: '#ff827d', ink: 3 },
   skitter: { name: 'Skitter', hp: 42, speed: 113, radius: 15, damage: 15, color: '#d5a5ff', ink: 3 },
   spitter: { name: 'Spitter', hp: 38, speed: 63, radius: 16, damage: 12, color: '#ffd088', ink: 3 },
@@ -30,6 +35,7 @@ export const ENEMIES = {
 export const ROUTE = [['first'], ['archive', 'trial'], ['nib', 'shelter'], ['brute'], ['spillway'], ['gallery', 'gauntlet'], ['last-shop', 'last-rest'], ['queen'], ['binding', 'crease'], ['stitches', 'foundry'], ['bind-shop', 'bind-rest'], ['knight']];
 export const RUSH_ROUTE = [['brute'], ['queen'], ['knight']];
 export const NODES = {
+  ...HARBOR_NODES,
   ...CHAPTER_NODES,
   first: { title: 'The first line', kind: 'combat', chapter: 1, layout: 'open', note: 'Clear two waves. Red ink swings; purple ink lunges.', reward: 12, waves: [['scrapper', 'scrapper', 'scrapper'], ['skitter', 'scrapper', 'spitter']], story: { speaker: 'THE MARGIN', title: 'The page remembers.', text: 'The Artist left you unfinished, Line. But something has started drawing in the dark. Follow the fresh ink. Find out who is holding the pen.' } },
   archive: { title: 'The torn archive', kind: 'combat', chapter: 1, layout: 'columns', note: 'Blue Warders block the front. Circle behind them or parry their swing.', reward: 16, waves: [['warder', 'scrapper', 'spitter'], ['warder', 'skitter', 'spitter']] },
@@ -56,6 +62,7 @@ export const NODES = {
 const stone = (x, y, radius = 36) => ({ x, y, radius });
 const pool = (x, y, radius = 53, offset = 0) => ({ x, y, radius, offset });
 export const LAYOUTS = {
+  ...HARBOR_LAYOUTS,
   courtyard: { name: 'The pencil courtyard', obstacles: [stone(300, 300, 40), stone(660, 300, 40)], pools: [], props: [{ x: 480, y: 245, radius: 24, type: 'cover' }] },
   'archive-room': { name: 'Rook’s scattered wings', obstacles: [stone(340, 300, 40), stone(620, 300, 40)], pools: [] },
   'eraser-room': { name: 'The road home', obstacles: [], pools: [], props: [{ x: 250, y: 295, radius: 26, type: 'cover' }, { x: 710, y: 295, radius: 26, type: 'cover' }] },
@@ -170,6 +177,9 @@ export const EVENTS = [
   { id: 'echo', title: 'The drawing that answered', text: 'A faint voice asks if anyone is still reading. A small kindness could bring it back into the story.', choices: [{ id: 'answer', label: 'Offer 10 health · rescue the drawing and gain 25 ink', hurt: 10, ink: 25, rescue: true }, { id: 'listen', label: 'Stay and listen · recover 10 health', heal: 10 }] },
 ];
 export const JOURNAL = {
+  mender: 'Ink Menders restore wounded allies within their circle. Hit them during the bright healing link to interrupt the channel, or separate them from their allies.',
+  leech: 'Paper Leeches tether you and drain health and guard. Hit the Leech, move more than 260 units away, or put solid cover between you to break its link.',
+  tidekeeper: 'The Tidekeeper takes 60% less damage while an anchor survives. Destroy anchors, leave the marked flood lanes, and interrupt summoned Menders. Your sluice choice can remove one anchor before the fight.',
   scrapper: 'A short red slash. Step out of its cone, then strike during recovery.', skitter: 'A straight purple charge. Move sideways after the warning locks.', spitter: 'A gold shot. Use cover or tap guard just before impact.', warder: 'A blue shield guards the front. Circle behind, parry, or use a heavy shield-breaking hit.', blotter: 'Its circles lock onto your position before filling. Floor ink cannot be blocked.',
   duelist: 'Crossblade attacks twice. Avoid the slash and the following thrust before closing in.', sniper: 'Needle Scribe locks a long aiming line. Step sideways or reflect the shot.', weaver: 'Nearby drawings take less damage while the Weaver lives. Defeat it first.', summoner: 'Inkwright can summon two Scrappers. Strike during its long summoning warning.',
   brute: 'The Brute cycles a charge, a shockwave, and a fan. Its second phase is faster, but recovery still leaves an opening.', queen: 'The Queen alternates quill fans, marked pools, and radial shots. Dash through gaps and attack during recovery.', knight: 'The Knight switches between shield and sword stances. Parrying opens its defence; sword stance includes a second attack.', palimpsest: 'The hidden drawing repeats familiar attacks. Defeat it to earn a seal that strengthens health and ability recovery.',

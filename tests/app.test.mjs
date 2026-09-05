@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { Game } from '../games/stick-and-swing/src/engine.js?v=2.3.0';
+import { Game } from '../games/stick-and-swing/src/engine.js?v=2.4.0';
 
 // Test the actual menu/controller integration with minimal platform doubles.
 // This does not launch a browser or verify layout, pointer targeting, or pixels.
@@ -62,7 +62,7 @@ test('the UI completes weapon selection, pause/settings/build, rewards, shopping
   try {
     await import('../assets/i18n/catalog.js?integration');
     await import('../assets/i18n/i18n.js?integration');
-    await import('../games/stick-and-swing/src/app.js?v=2.3.0');
+    await import('../games/stick-and-swing/src/app.js?v=2.4.0');
     const dialog = elements.get('game-dialog'), inner = elements.get('dialog-inner');
     const click = label => { const b = inner.all().find(e => e.tagName === 'BUTTON' && !e.disabled && e.textContent.includes(label)); assert.ok(b, `No usable button: ${label} in ${dialog.dataset.view}`); b.fire('click'); };
     let now = performance.now();
@@ -109,12 +109,36 @@ test('the UI completes weapon selection, pause/settings/build, rewards, shopping
     click('Extras'); click('Practice arena'); assert.equal(dialog.dataset.view, 'practice'); click('Enter practice'); frames(); assert.equal(game.runMode, 'practice');
     for (const e of game.enemies) { e.spawn = 0; game.hurtEnemy(e, 10000, 0, 'test'); } frames(84); assert.equal(dialog.dataset.view, 'practiceResult');
     click('Title screen'); click('Extras'); click('Boss Rush'); assert.equal(dialog.dataset.view, 'weapons'); click('Pagebreaker'); assert.equal(game.runMode, 'rush'); assert.equal(game.route.length, 3); assert.equal(dialog.dataset.view, 'route');
-    click('Save & title'); click('New adventure'); click('Choose a weapon'); click('Scrapsteel');
+    click('Save & title'); click('Begin Chapter I →'); click('Choose a weapon'); click('Scrapsteel');
     assert.equal(game.runMode, 'chapter'); click('A line in the dark'); click('Continue'); frames(6);
     assert.equal(elements.get('chapter-guide').hidden, false); assert.match(elements.get('objective-text').textContent, /Clear the room/);
     game.enemies = []; game.wave = 1; frames(85); assert.equal(game.exitReady, true);
     assert.match(elements.get('objective-text').textContent, /doorway/);
     game.player.x = 480; game.player.y = 95; frames(8); assert.equal(dialog.dataset.view, 'reward');
     click('Leave a mark'); frames(); assert.equal(game.mode, 'route'); assert.ok(game.upgrades.includes('afterimage'));
+    click('Save & title'); click('Begin Chapter II →'); click('Choose a weapon'); click('Scrapsteel');
+    assert.equal(game.runMode, 'chapter2'); assert.ok(inner.textContent.includes('Restore the harbor beacon.'));
+    for (let guard = 0; game.mode !== 'victory' && guard < 100; guard++) {
+      if (game.mode === 'route') { const card = inner.all().find(e => e.tagName === 'BUTTON' && e.className.includes('route-card')); card.fire('click'); frames(); }
+      else if (game.mode === 'story') { click('Continue'); frames(); }
+      else if (game.mode === 'combat') {
+        frames(8); // Render living enemies and exploration markers before clearing.
+        for (const p of game.props) if (p.type === 'anchor') game.hurtProp(p, 1000);
+        for (const e of game.enemies) { e.spawn = 0; game.hurtEnemy(e, 10000, 0, 'test'); }
+        for (const f of game.fragments) { game.player.x = f.x; game.player.y = f.y; game.updateObjectives(); }
+        frames(85); if (game.exitReady) { Object.assign(game.player, game.currentNode.exit || { x: 480, y: 95 }); frames(8); }
+      } else if (game.mode === 'reward') { inner.all().find(e => e.tagName === 'BUTTON' && e.className === 'upgrade-card').fire('click'); frames(); }
+      else if (game.mode === 'choice') {
+        assert.equal(dialog.dataset.view, 'choice');
+        WebyI18n.setLanguage('de'); assert.equal(game.mode, 'choice'); WebyI18n.setLanguage('en');
+        click(game.currentNode.decision === 'ferry' ? 'Free the ferryman' : 'Drain the lower streets'); frames();
+        assert.equal(game.mode, 'route'); assert.equal(dialog.dataset.view, 'route'); assert.ok(inner.textContent.includes('Your choices on this journey'));
+      } else if (game.mode === 'rest') { click('Rest & continue'); frames(); }
+      else if (game.mode === 'shop') { click('Continue the adventure'); frames(); }
+      else assert.fail(`Unexpected harbor mode ${game.mode}`);
+    }
+    assert.equal(dialog.dataset.view, 'victory'); assert.ok(inner.textContent.includes('CHAPTER II COMPLETE'));
+    assert.equal(JSON.parse(values.get('weby.stickSwing.state.v4')).profile.harborWins, 1);
+    click('Return home'); assert.equal(dialog.dataset.view, 'title'); assert.ok(inner.textContent.includes('A harbor lantern'));
   } finally { Game.prototype.startNew = start; }
 });

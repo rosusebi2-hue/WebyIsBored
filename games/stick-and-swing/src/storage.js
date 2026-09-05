@@ -1,4 +1,4 @@
-import { ROUTE, RUSH_ROUTE, CHAPTER_ROUTE, KEEPSAKES, MEMORIES, keepsakeUnlocked, NODES, ENEMIES, EVENTS, WEAPONS, DEFAULT_BINDINGS, availableUpgrades, playerStats, freshStats, masteryEmpty, unlocked } from './config.js?v=2.3.0';
+import { ROUTE, RUSH_ROUTE, CHAPTER_ROUTE, HARBOR_ROUTE, HARBOR_CHOICES, KEEPSAKES, MEMORIES, keepsakeUnlocked, NODES, ENEMIES, EVENTS, WEAPONS, DEFAULT_BINDINGS, availableUpgrades, playerStats, freshStats, masteryEmpty, unlocked } from './config.js?v=2.4.0';
 const STATE_KEY = 'weby.stickSwing.state.v4';
 const SETTINGS_KEY = 'weby.stickSwing.settings.v2';
 const finite = (n, min, max) => typeof n === 'number' && Number.isFinite(n) && n >= min && n <= max;
@@ -10,7 +10,8 @@ export function normalizeProfile(raw = {}) {
     tutorialDone: p.tutorialDone === true, wins: metric(p.wins), bestTime: finite(p.bestTime, 1, 86400) ? p.bestTime : null,
     adventureWins: metric(p.adventureWins), adventureBest: finite(p.adventureBest, 1, 86400) ? p.adventureBest : null,
     bookWins: metric(p.bookWins), bookBest: finite(p.bookBest, 1, 86400) ? p.bookBest : null,
-    mastery: {}, loadouts: {}, rushBest: {}, chapterWins: metric(p.chapterWins),
+    mastery: {}, loadouts: {}, rushBest: {}, chapterWins: metric(p.chapterWins), harborWins: metric(p.harborWins),
+    harborBest: finite(p.harborBest, 1, 86400) ? p.harborBest : null,
     chapterBest: finite(p.chapterBest, 1, 86400) ? p.chapterBest : null,
     memories: [...new Set(Array.isArray(p.memories) ? p.memories.filter(id => Object.hasOwn(MEMORIES, id)) : [])], keepsake: 'thread',
     discovered: [...new Set(Array.isArray(p.discovered) ? p.discovered.filter(id => Object.hasOwn(ENEMIES, id)) : [])],
@@ -29,11 +30,11 @@ export function validateCheckpoint(raw) {
   if (!raw || ![3, 4].includes(raw.version)) return null;
   let value = raw;
   if (raw.version === 3) value = { ...raw, version: 4, runMode: 'adventure', encounter: 'main', initialSeed: raw.seed, runId: `migrated-${raw.seed}`, forms: forms(), eventsSeen: [], eventId: null, afterReward: 'route' };
-  if (!['route', 'story', 'combat', 'reward', 'shop', 'rest', 'event'].includes(value.phase)) return null;
+  if (!['route', 'story', 'combat', 'reward', 'shop', 'rest', 'event', 'choice'].includes(value.phase)) return null;
   const { phase, room, weapon, node, path, upgrades, hp, seed, ink, stats, runMode, encounter, eventsSeen, eventId, afterReward, runId, initialSeed } = value;
-  const route = runMode === 'rush' ? RUSH_ROUTE : runMode === 'chapter' ? CHAPTER_ROUTE : ROUTE;
-  if (!['adventure', 'rush', 'chapter'].includes(runMode) || !['main', 'secret'].includes(encounter) || !['route', 'event'].includes(afterReward)) return null;
-  if (runMode === 'chapter' && !Object.hasOwn(KEEPSAKES, value.keepsake)) return null;
+  const route = runMode === 'rush' ? RUSH_ROUTE : runMode === 'chapter2' ? HARBOR_ROUTE : runMode === 'chapter' ? CHAPTER_ROUTE : ROUTE;
+  if (!['adventure', 'rush', 'chapter', 'chapter2'].includes(runMode) || !['main', 'secret'].includes(encounter) || !['route', 'event'].includes(afterReward)) return null;
+  if (['chapter', 'chapter2'].includes(runMode) && !Object.hasOwn(KEEPSAKES, value.keepsake)) return null;
   if (typeof runId !== 'string' || !/^[a-z0-9-]{1,64}$/.test(runId) || !Number.isInteger(initialSeed) || !finite(initialSeed, 1, 4294967295)) return null;
   if (!Object.hasOwn(WEAPONS, weapon) || !Number.isInteger(room) || room < -1 || room >= route.length) return null;
   if (!unique(path) || path.length !== room + 1 || path.some((id, i) => !route[i].includes(id)) || node !== (path.at(-1) ?? null)) return null;
@@ -46,14 +47,25 @@ export function validateCheckpoint(raw) {
   if (phase === 'event' && (!EVENTS.some(e => e.id === eventId) || eventsSeen.includes(eventId) || runMode !== 'adventure')) return null;
   if (encounter === 'secret' && (!eventsSeen.includes('duel') || !['combat', 'reward'].includes(phase) || runMode !== 'adventure')) return null;
   const kind = NODES[node]?.kind;
+  const decisions = {};
+  if (runMode === 'chapter2') {
+    const rawDecisions = value.decisions || {};
+    if (typeof rawDecisions !== 'object' || Array.isArray(rawDecisions) || Object.keys(rawDecisions).some(key => !Object.hasOwn(HARBOR_CHOICES, key))) return null;
+    for (const [key, stop] of [['ferry', 2], ['water', 4]]) {
+      const chosen = rawDecisions[key], completed = room > stop || room === stop && phase === 'route';
+      if (completed !== !!chosen || chosen && !HARBOR_CHOICES[key].some(c => c.id === chosen)) return null;
+      if (chosen) decisions[key] = chosen;
+    }
+  }
+  if (phase === 'choice' && (runMode !== 'chapter2' || kind !== 'choice')) return null;
   if (['combat', 'reward'].includes(phase) && !['combat', 'elite', 'boss'].includes(kind)) return null;
   if (phase === 'story' && !NODES[node]?.story || phase === 'shop' && kind !== 'shop' || phase === 'rest' && kind !== 'rest') return null;
   const result = { version: 4, phase, room, weapon, node, path: [...path], upgrades: [...upgrades], hp, seed, ink, runMode, encounter, runId, initialSeed,
-    forms: forms(value.forms), keepsake: runMode === 'chapter' ? value.keepsake : null, eventsSeen: [...eventsSeen], eventId: phase === 'event' ? eventId : null, afterReward,
+    forms: forms(value.forms), decisions, keepsake: ['chapter', 'chapter2'].includes(runMode) ? value.keepsake : null, eventsSeen: [...eventsSeen], eventId: phase === 'event' ? eventId : null, afterReward,
     stats: Object.fromEntries(Object.keys(freshStats()).map(k => [k, stats[k]])) };
   if (phase === 'reward') {
     const choices = value.choices, available = encounter === 'secret' && !upgrades.includes('seal') ? ['seal'] : availableUpgrades(weapon, upgrades).map(u => u.id);
-    if (['knight', 'eraser'].includes(node) || !unique(choices) || choices.length !== Math.min(3, available.length) || choices.some(id => !available.includes(id))) return null;
+    if (['knight', 'eraser', 'tidekeeper'].includes(node) || !unique(choices) || choices.length !== Math.min(3, available.length) || choices.some(id => !available.includes(id))) return null;
     result.choices = [...choices];
   }
   if (phase === 'shop') {
@@ -66,7 +78,7 @@ export function validateCheckpoint(raw) {
 }
 function validHistory(raw) {
   if (!Array.isArray(raw)) return [];
-  return raw.filter(r => r && typeof r.id === 'string' && r.id.length < 100 && Object.hasOwn(WEAPONS, r.weapon) && ['adventure', 'rush', 'chapter'].includes(r.mode) && ['victory', 'defeat'].includes(r.result) && finite(r.time, 0, 1000000) && Number.isInteger(r.seed) && finite(r.seed, 1, 4294967295) && finite(r.stop, 1, 12) && typeof r.date === 'string' && r.date.length < 40 && Array.isArray(r.path) && r.path.every(id => Object.hasOwn(NODES, id)) && Array.isArray(r.build) && r.build.every(id => availableUpgrades(r.weapon, [], true).some(u => u.id === id))).slice(0, 10).map(r => ({ id: r.id, weapon: r.weapon, mode: r.mode, result: r.result, time: r.time, seed: r.seed, stop: r.stop, date: r.date, path: [...r.path], build: [...r.build] }));
+  return raw.filter(r => r && typeof r.id === 'string' && r.id.length < 100 && Object.hasOwn(WEAPONS, r.weapon) && ['adventure', 'rush', 'chapter', 'chapter2'].includes(r.mode) && ['victory', 'defeat'].includes(r.result) && finite(r.time, 0, 1000000) && Number.isInteger(r.seed) && finite(r.seed, 1, 4294967295) && finite(r.stop, 1, 12) && typeof r.date === 'string' && r.date.length < 40 && Array.isArray(r.path) && r.path.every(id => Object.hasOwn(NODES, id)) && Array.isArray(r.build) && r.build.every(id => availableUpgrades(r.weapon, [], true).some(u => u.id === id))).slice(0, 10).map(r => ({ id: r.id, weapon: r.weapon, mode: r.mode, result: r.result, time: r.time, seed: r.seed, stop: r.stop, date: r.date, path: [...r.path], build: [...r.build] }));
 }
 export class SaveStore {
   constructor(storage) {
@@ -98,7 +110,8 @@ export class SaveStore {
     if (victory) {
       this.state.run = null;
       const p = this.state.profile;
-      if (record.mode === 'chapter') { p.chapterWins++; p.chapterBest = Math.min(p.chapterBest || Infinity, record.time); }
+      if (record.mode === 'chapter2') { p.harborWins++; p.harborBest = Math.min(p.harborBest || Infinity, record.time); }
+      else if (record.mode === 'chapter') { p.chapterWins++; p.chapterBest = Math.min(p.chapterBest || Infinity, record.time); }
       else if (record.mode === 'rush') p.rushBest[record.weapon] = Math.min(p.rushBest[record.weapon] || Infinity, record.time);
       else { p.bookWins++; p.bookBest = Math.min(p.bookBest || Infinity, record.time); }
     }

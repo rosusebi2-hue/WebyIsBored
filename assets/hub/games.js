@@ -2,8 +2,8 @@
    Keep the first playable entry as the featured game. Paths are relative to index.html. */
 window.WEBY_GAMES = [
   {
-    id: 'stick-and-swing', title: 'Stick & Swing', kicker: 'The Lost Drawing · Version 2.3',
-    description: 'A paper bird is lost in the archive. Find its wings, choose your path, and fight for the road home. A new chapter begins.',
+    id: 'stick-and-swing', title: 'Stick & Swing', kicker: 'The Drowned Harbor · Version 2.4',
+    description: 'A harbor is sinking into ink. Cross broken walkways, restore its beacon, and decide where the flood goes. Chapter II is here.',
     status: 'playable', href: 'games/stick-and-swing/', cover: 'assets/hub/stick-and-swing.webp',
     tags: ['Action', 'Roguelite', 'Single player'], controls: 'stick-and-swing'
   },

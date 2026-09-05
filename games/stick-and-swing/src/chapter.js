@@ -21,8 +21,13 @@ export const KEEPSAKES = {
   thread: { name: 'A loose thread', description: 'Each dash cuts through nearby enemies for 18 damage, once per enemy per dash.', requirement: null },
   bell: { name: 'Rook’s little bell', description: 'Perfect blocks send out a 24-damage pulse. Rescue Rook to unlock it.', requirement: 'rook' },
   quill: { name: 'The unfinished quill', description: 'Every third swing sends a 22-damage ink blade forward. Finish the chapter to unlock it.', requirement: 'home' },
+  compass: { name: 'The beacon compass', description: 'Your active ability has a 20% shorter cooldown. Restore the harbor beacon to unlock it.', requirement: 'beacon' },
+  lantern: { name: 'A harbor lantern', description: 'The first enemy defeated in each wave restores 8 health. Finish Chapter II to unlock it.', requirement: 'harbor' },
 };
 export const MEMORIES = {
+  ferry: { name: 'A promise kept afloat', description: 'Free the ferryman in Chapter II.' },
+  beacon: { name: 'A light across the water', description: 'Restore both beacon lenses in Chapter II.' },
+  harbor: { name: 'A harbor above the tide', description: 'Defeat the Tidekeeper and save the harbor.' },
   rook: { name: 'A bird with both wings', description: 'Rescue Rook in the archive.' },
   vault: { name: 'A name beneath the ink', description: 'Find the hidden memory in the forgotten vault.' },
   home: { name: 'A page worth keeping', description: 'Defeat the Brute and restore the road home.' },

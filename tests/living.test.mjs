@@ -125,5 +125,5 @@ test('defeats keep the entrance, preserve earned mastery once, and generate usef
   const { g, store } = setup(); const entrance = store.loadRun(); const e = enemy(g, 'scrapper'); g.hurtEnemy(e, 100, 0, 'sword'); g.hurtPlayer(1000, { x: 0, y: 0 }, 'A test hit', null, false);
   assert.equal(g.mode, 'death'); assert.equal(store.history().length, 1); assert.equal(store.profile().mastery.scrapsteel.kills, 1); assert.deepEqual(store.loadRun(), entrance);
   g.finishAttempt(false); assert.equal(store.profile().mastery.scrapsteel.kills, 1); assert.equal(g.retryRoom(), true); assert.equal(g.stats.retries, 1);
-  const report = JSON.parse(buildReport(g, store.settings(), ['example error'])); assert.equal(report.version, '2.3.0'); assert.equal(report.seed, 721); assert.equal(report.weapon, 'scrapsteel'); assert.deepEqual(report.route, ['first']); assert.deepEqual(report.errors, ['example error']);
+  const report = JSON.parse(buildReport(g, store.settings(), ['example error'])); assert.equal(report.version, '2.4.0'); assert.equal(report.seed, 721); assert.equal(report.weapon, 'scrapsteel'); assert.deepEqual(report.route, ['first']); assert.deepEqual(report.errors, ['example error']);
 });

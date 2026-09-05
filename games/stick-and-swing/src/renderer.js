@@ -1,4 +1,4 @@
-import { WORLD, TAU, WEAPONS, clamp, distance } from './config.js?v=2.3.0';
+import { WORLD, TAU, WEAPONS, clamp, distance } from './config.js?v=2.4.0';
 const INK = '#dce7eb', MINT = '#9aefd9', GOLD = '#ffd088', RED = '#ff827d';
 const t = text => globalThis.WebyI18n?.t(text) || text;
 export class Renderer {
@@ -65,23 +65,33 @@ export class Renderer {
     c.save();
     if (this.shake > .1 && !this.settings.reduced) { c.translate((Math.random() - .5) * this.shake, (Math.random() - .5) * this.shake); this.shake *= Math.exp(-20 * dt); }
     const chapter = g.currentNode?.chapter || 1;
-    if (chapter >= 2) { c.fillStyle = chapter === 3 ? '#c3924020' : '#8e5bad0b'; c.fillRect(50, 50, 860, 500); }
+    if (chapter >= 2) { c.fillStyle = g.runMode === 'chapter2' ? '#22798920' : chapter === 3 ? '#c3924020' : '#8e5bad0b'; c.fillRect(50, 50, 860, 500); }
     if (chapter === 3) {
       c.strokeStyle = '#dfbb7860'; c.lineWidth = 1.5;
       for (let y = 65; y < 550; y += 30) { c.beginPath(); c.moveTo(58, y); c.lineTo(80, y + 15); c.moveTo(880, y); c.lineTo(902, y + 15); c.stroke(); }
     }
     for (const h of g.hazards) this.hazard(h);
     for (const b of g.bursts) this.hazard({ ...b, warning: b.delay, friendly: true });
-    if (g.runMode === 'chapter' && g.mode === 'combat') {
+    for (const gap of g.gaps || []) {
+      c.fillStyle = '#050c18'; c.fillRect(gap.x, gap.y, gap.width, gap.height);
+      c.strokeStyle = this.settings.contrast ? '#fff' : '#6ed9f2'; c.lineWidth = 2; c.setLineDash([5, 8]); c.strokeRect(gap.x, gap.y, gap.width, gap.height); c.setLineDash([]);
+      c.font = 'bold 26px system-ui'; c.textAlign = 'center'; c.fillStyle = '#b6eefa'; c.fillText('»', gap.x - 28, gap.crossingY); c.fillText('«', gap.x + gap.width + 28, gap.crossingY);
+      c.font = 'bold 13px system-ui'; c.fillText(t('DASH'), gap.x + gap.width / 2, gap.crossingY + 34);
+    }
+    if (g.lantern && !g.lantern.used) {
+      this.target(g.lantern, true); c.fillStyle = MINT; c.font = 'bold 16px system-ui'; c.textAlign = 'center'; c.fillText(t('+25 HEALTH'), g.lantern.x, g.lantern.y - 53);
+    }
+    if (g.authored && g.mode === 'combat') {
       for (const f of g.fragments) {
         if (f.collected || f.secret && g.props.some(o => o.hp > 0 && distance(o, f) < 40)) continue;
         this.target(f, false); c.fillStyle = INK; c.textAlign = 'center'; c.font = 'bold 13px system-ui';
-        c.fillText(t(f.secret ? 'MEMORY' : 'WING FRAGMENT'), f.x, f.y - 53);
+        c.fillText(t(g.runMode === 'chapter2' ? 'WAYMARK' : f.secret ? 'MEMORY' : 'WING FRAGMENT'), f.x, f.y - 53);
       }
       if (g.exitReady) {
+        const exit = g.currentNode.exit || { x: 480, y: 95 };
         c.fillStyle = '#9aefd925'; c.strokeStyle = MINT; c.lineWidth = 3;
-        c.fillRect(446, 62, 68, 70); c.strokeRect(446, 62, 68, 70);
-        c.font = 'bold 13px system-ui'; c.fillStyle = INK; c.textAlign = 'center'; c.fillText(t('CONTINUE ↑'), 480, 154);
+        c.fillRect(exit.x - 34, exit.y - 33, 68, 70); c.strokeRect(exit.x - 34, exit.y - 33, 68, 70);
+        c.font = 'bold 13px system-ui'; c.fillStyle = INK; c.textAlign = 'center'; c.fillText(t('CONTINUE ↑'), exit.x, exit.y + 59);
       }
     }
     for (const o of g.obstacles) this.obstacle(o);
@@ -97,7 +107,15 @@ export class Renderer {
       c.setLineDash([]);
     }
     if (g.mode === 'tutorial' && g.target) this.target(g.target, g.lessonDone);
-    for (const e of g.enemies) this.telegraph(e);
+    for (const e of g.enemies) {
+      const target = e.mendTarget ? g.enemies.find(a => a.id === e.mendTarget && a.hp > 0) : e.tether || e.state === 'windup' && e.attack === 'tether' ? p : null;
+      if (target && e.hp > 0) {
+        c.strokeStyle = this.settings.contrast ? '#fff' : e.type === 'mender' ? '#79e5d4' : '#b7a5ff'; c.lineWidth = e.tether ? 4 : 2;
+        if (!e.tether) c.setLineDash([6, 5]); c.beginPath(); c.moveTo(e.x, e.y - 15); c.lineTo(target.x, target.y - 15); c.stroke(); c.setLineDash([]);
+        c.font = 'bold 14px system-ui'; c.textAlign = 'center'; c.fillStyle = c.strokeStyle; c.fillText(t(e.type === 'mender' ? 'HEALING' : 'BREAK THE LINK'), e.x, e.y - 70);
+      }
+      this.telegraph(e);
+    }
     for (const r of g.rings) {
       c.strokeStyle = RED; c.lineWidth = 7; c.beginPath(); c.arc(r.x, r.y, r.radius, 0, TAU); c.stroke();
       c.strokeStyle = '#ff827d35'; c.lineWidth = 22; c.stroke();
@@ -168,6 +186,7 @@ export class Renderer {
     else { c.fillRect(o.x - o.radius, o.y - o.radius, o.radius * 2, o.radius * 2); c.strokeRect(o.x - o.radius, o.y - o.radius, o.radius * 2, o.radius * 2); }
     c.beginPath(); c.moveTo(o.x - 10, o.y - 10); c.lineTo(o.x + 10, o.y + 10); c.moveTo(o.x + 10, o.y - 10); c.lineTo(o.x - 10, o.y + 10); c.stroke();
     c.fillStyle = '#070e18'; c.fillRect(o.x - 20, o.y - o.radius - 9, 40, 3); c.fillStyle = c.strokeStyle; c.fillRect(o.x - 20, o.y - o.radius - 9, 40 * o.hp / o.maxHp, 3);
+    if (o.type === 'anchor') { c.strokeStyle = '#6ed9f2'; c.lineWidth = 3; c.beginPath(); c.arc(o.x, o.y, o.radius + 9, 0, TAU); c.stroke(); c.fillStyle = '#c0f4ff'; c.font = 'bold 13px system-ui'; c.textAlign = 'center'; c.fillText(t('ANCHOR'), o.x, o.y - o.radius - 19); }
   }
   telegraph(e) {
     const c = this.ctx;
@@ -196,13 +215,13 @@ export class Renderer {
       c.beginPath(); c.arc(e.x, e.y, 285, 0, TAU); c.fill(); c.setLineDash([6, 9]); c.stroke(); c.setLineDash([]);
       c.beginPath(); c.arc(e.x, e.y, Math.max(2, 62 * (1 - progress)), 0, TAU); c.stroke();
     }
-    if (e.attack === 'blot' || e.attack === 'blots' || e.attack === 'redact') {
+    if (e.attack === 'blot' || e.attack === 'blots' || e.attack === 'redact' || e.attack === 'tide') {
       for (const target of e.targets || []) {
         this.hazard({ ...target, warning: e.stateTime });
         c.strokeStyle = GOLD; c.lineWidth = 2; c.beginPath(); c.arc(target.x, target.y, Math.max(2, target.radius * (1 - progress)), 0, TAU); c.stroke();
       }
     }
-    if (e.attack === 'summon') { c.setLineDash([4, 6]); c.beginPath(); c.arc(e.x, e.y, 70, 0, TAU); c.stroke(); c.setLineDash([]); }
+    if (['summon', 'callMender', 'mend'].includes(e.attack)) { c.setLineDash([4, 6]); c.beginPath(); c.arc(e.x, e.y, 70, 0, TAU); c.stroke(); c.setLineDash([]); }
     if (e.attack === 'snipe') { c.setLineDash([8, 6]); c.beginPath(); c.moveTo(e.x, e.y); c.lineTo(e.x + Math.cos(e.facing) * 1000, e.y + Math.sin(e.facing) * 1000); c.stroke(); c.setLineDash([]); }
     if (['shot', 'fan', 'quill', 'orbit'].includes(e.attack)) {
       const count = e.attack === 'orbit' ? (e.phase === 2 ? 16 : 12) : e.attack === 'quill' ? (e.phase === 2 ? 11 : 7) : e.attack === 'fan' ? (e.phase === 2 ? 9 : 7) : 1;
@@ -213,7 +232,7 @@ export class Renderer {
     c.strokeStyle = progress > .78 ? '#fff1cf' : e.color; c.lineWidth = 3;
     c.beginPath(); c.arc(e.x, e.y, e.radius + 10, -Math.PI / 2, -Math.PI / 2 + progress * TAU); c.stroke();
     c.font = 'bold 22px system-ui'; c.textAlign = 'center'; c.fillStyle = GOLD;
-    c.fillText(this.settings.cues ? (['blot', 'blots', 'redact', 'summon'].includes(e.attack) ? '×' : '◇') : '!', e.x, e.y - (e.boss ? 88 : 55));
+    c.fillText(this.settings.cues ? (['mend', 'callMender'].includes(e.attack) ? '!' : ['blot', 'blots', 'redact', 'summon', 'tide', 'tether'].includes(e.attack) ? '×' : '◇') : '!', e.x, e.y - (e.boss ? 88 : 55));
   }
   figure(x, y, color, scale, facing, walk, sword = false, heavy = false, weapon = 'scrapsteel') {
     const c = this.ctx, stride = Math.sin(walk) * 5;
@@ -232,6 +251,9 @@ export class Renderer {
   enemy(e) {
     const c = this.ctx, heavy = e.type === 'brute', scale = heavy ? 1.85 : e.boss ? 1.45 : e.type === 'warder' ? 1.2 : e.type === 'skitter' ? .92 : 1;
     if (this.settings.contrast || e.champion) { c.strokeStyle = this.settings.contrast ? '#ffffff' : GOLD; c.lineWidth = 3; c.beginPath(); c.arc(e.x, e.y, e.radius + 5, 0, TAU); c.stroke(); }
+    if (e.type === 'mender') { c.strokeStyle = '#79e5d4'; c.lineWidth = 3; c.beginPath(); c.moveTo(e.x - 8, e.y - 53); c.lineTo(e.x + 8, e.y - 53); c.moveTo(e.x, e.y - 61); c.lineTo(e.x, e.y - 45); c.stroke(); }
+    if (e.type === 'leech') { c.strokeStyle = '#b7a5ff'; c.lineWidth = 2; c.beginPath(); c.arc(e.x, e.y - 28, 17, 0, TAU); c.stroke(); }
+    if (e.type === 'tidekeeper') { c.strokeStyle = '#6ed9f2'; c.lineWidth = 3; c.beginPath(); c.arc(e.x, e.y, e.radius + 14, 0, TAU); c.stroke(); for (const anchor of this.game.props.filter(o => o.type === 'anchor' && o.hp > 0)) { c.strokeStyle = '#6ed9f277'; c.beginPath(); c.moveTo(e.x, e.y); c.lineTo(anchor.x, anchor.y); c.stroke(); } }
     c.fillStyle = '#02061165'; c.beginPath(); c.ellipse(e.x, e.y + 16 * scale, e.radius + 5, e.radius * .4, 0, 0, TAU); c.fill();
     if (e.burn > 0) { c.strokeStyle = '#ffad78'; c.lineWidth = 2; c.setLineDash([3, 4]); c.beginPath(); c.arc(e.x, e.y, e.radius + 7, 0, TAU); c.stroke(); c.setLineDash([]); }
     if (e.type === 'queen') {

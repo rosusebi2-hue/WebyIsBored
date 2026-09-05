@@ -1,11 +1,11 @@
-import { VERSION, NODES, ENEMIES, WEAPONS, LESSONS, UPGRADES, SHOP_HEAL, EVENTS, ABILITIES, FINISHERS, MASTERIES, SYNERGIES, JOURNAL, DEFAULT_BINDINGS, KEEPSAKES, MEMORIES, keepsakeUnlocked, unlocked, giftPrice, clamp } from './config.js?v=2.3.0';
-import { SaveStore } from './storage.js?v=2.3.0';
-import { Game } from './engine.js?v=2.3.0';
-import { Renderer } from './renderer.js?v=2.3.0';
-import { Input, keyLabel } from './input.js?v=2.3.0';
-import { AudioEngine } from './audio.js?v=2.3.0';
+import { VERSION, NODES, ENEMIES, WEAPONS, LESSONS, UPGRADES, SHOP_HEAL, EVENTS, ABILITIES, FINISHERS, MASTERIES, SYNERGIES, JOURNAL, DEFAULT_BINDINGS, HARBOR_CHOICES, KEEPSAKES, MEMORIES, keepsakeUnlocked, unlocked, giftPrice, clamp } from './config.js?v=2.4.0';
+import { SaveStore } from './storage.js?v=2.4.0';
+import { Game } from './engine.js?v=2.4.0';
+import { Renderer } from './renderer.js?v=2.4.0';
+import { Input, keyLabel } from './input.js?v=2.4.0';
+import { AudioEngine } from './audio.js?v=2.4.0';
 
-import { buildReport } from './report.js?v=2.3.0';
+import { buildReport } from './report.js?v=2.4.0';
 const t = (value, params) => globalThis.WebyI18n?.t(value, params) || String(value).replace(/\{(\w+)\}/g, (_, key) => params?.[key] ?? `{${key}}`);
 const errors = [];
 window.addEventListener('error', e => errors.push(String(e.message).slice(0, 300)));
@@ -67,10 +67,11 @@ function showTitle() {
   const save = store.loadRun(), profile = store.profile();
   openDialog('title', `STICK & SWING · ${VERSION}`, 'The quiet margin.', 'Your home between the pages. Choose a keepsake, take a blade, and bring the lost drawings back.', true);
   const cover = text('div', '', 'home-cover');
-  cover.append(text('p', 'CHAPTER I', 'dialog-eyebrow'), text('h3', 'The Lost Drawing'), text('p', profile.memories.includes('home') ? 'The road home is safe. There are still other paths and memories to discover.' : 'Rescue Rook. Find the missing wings. Keep the road home from being erased.'));
+  cover.append(text('p', 'NEW · CHAPTER II', 'dialog-eyebrow'), text('h3', 'The Drowned Harbor'), text('p', 'Cross broken walkways, restore the beacon, and decide where the flood goes. Your choices change the journey.'));
   inner.append(cover);
-  if (save) actions(button(`Continue · ${save.room < 0 ? 'Choose your route' : NODES[save.node].title}`, () => { closeDialog(); game.restore(save); }, 'primary'), button('New adventure', () => launch()));
-  else actions(button('Begin Chapter I →', () => launch(), 'primary'));
+  if (save) actions(button(`Continue · ${save.room < 0 ? 'Choose your route' : NODES[save.node].title}`, () => { closeDialog(); game.restore(save); }, 'primary'));
+  actions(button('Begin Chapter II →', () => launch(false, false, 'chapter2'), save ? 'secondary' : 'primary'), button('Begin Chapter I →', () => launch(), 'secondary'));
+  inner.append(text('p', 'Both chapters are available. Each starts a fresh build; your memories and weapon mastery stay.', 'field-note'));
   subactions(button('Workshop', () => showWorkshop(), ''), button('Journal', showJournal, ''), button('Extras', showExtras, ''), button('Settings', showSettings, ''));
   inner.append(text('h3', 'Take a keepsake'));
   const keepsakes = text('div', '', 'keepsake-grid');
@@ -80,12 +81,12 @@ function showTitle() {
     card.disabled = !unlocked; card.setAttribute('aria-pressed', String(selected));
     card.append(text('span', selected ? 'Selected' : unlocked ? 'Available' : 'Locked', 'upgrade-tag'), text('strong', item.name), text('p', item.description)); keepsakes.append(card);
   }
-  inner.append(keepsakes, text('p', 'Keepsakes apply to new Chapter I runs. Your current checkpoint keeps its original choice.', 'field-note'));
+  inner.append(keepsakes, text('p', 'Keepsakes apply to new chapter runs. Your current checkpoint keeps its original choice.', 'field-note'));
   const memories = text('div', '', 'memory-list');
   for (const [id, item] of Object.entries(MEMORIES)) { const row = text('div', '', 'memory-row'); row.append(text('span', profile.memories.includes(id) ? '✓' : '○'), text('strong', item.name), text('small', item.description)); memories.append(row); }
-  inner.append(text('h3', t('Memories restored: {0} / 3', { 0: profile.memories.length })), memories);
+  inner.append(text('h3', t('Memories restored: {0} / {1}', { 0: profile.memories.length, 1: Object.keys(MEMORIES).length })), memories);
   inner.append(text('p', profile.memories.includes('rook') ? 'Rook: “You came back. I kept your place.”' : 'Nib: “There is room here for one more drawing.”', 'dialog-quote'));
-  subactions(button('Learn the controls', () => launch(true), ''), button('Recent runs', showHistory, ''), link('What’s new ↗', '../../news/#stick-and-swing-2-3'));
+  subactions(button('Learn the controls', () => launch(true), ''), button('Recent runs', showHistory, ''), link('What’s new ↗', '../../news/#stick-and-swing-2-4'));
 }
 function showExtras() {
   openDialog('extras', 'MORE PAGES TO EXPLORE', 'Extras', 'The original expedition, challenges, and practice share your weapon mastery. Starting a run replaces the current checkpoint.', true);
@@ -106,25 +107,33 @@ function routeMap() {
     const id = game.path[i], next = i === game.room + 1;
     const cell = text('li', '', `map-stop ${id ? 'visited' : ''} ${next ? 'next' : ''} ${options.length === 1 && NODES[options[0]].kind === 'boss' ? 'map-boss' : ''}`);
     if (next) cell.setAttribute('aria-current', 'step');
-    cell.append(text('span', `${String(i + 1).padStart(2, '0')} · ${game.runMode === 'chapter' ? 'PAGE I' : game.runMode === 'rush' ? 'BOSS' : i < 4 ? 'PAGE I' : i < 8 ? 'PAGE II' : 'PAGE III'}`, 'map-number'));
+    cell.append(text('span', `${String(i + 1).padStart(2, '0')} · ${game.runMode === 'chapter2' ? 'PAGE II' : game.runMode === 'chapter' ? 'PAGE I' : game.runMode === 'rush' ? 'BOSS' : i < 4 ? 'PAGE I' : i < 8 ? 'PAGE II' : 'PAGE III'}`, 'map-number'));
     cell.append(text('strong', id ? NODES[id].title : options.length === 1 ? NODES[options[0]].title : options.some(id => NODES[id].kind === 'shop') ? 'Shop or recovery' : 'Battle or challenge'));
     cell.append(text('small', next ? 'Choose this stop' : id ? 'Your path' : 'Ahead'));
     map.append(cell);
   });
   return map;
 }
+function decisionRecap() {
+  if (game.runMode !== 'chapter2' || !Object.keys(game.decisions || {}).length) return;
+  const recap = text('details', '', 'decision-recap'); recap.append(text('summary', 'Your choices on this journey'));
+  for (const [key, id] of Object.entries(game.decisions)) { const c = HARBOR_CHOICES[key].find(c => c.id === id); recap.append(text('h3', c.title), text('p', c.text)); }
+  inner.append(recap);
+}
 function showRoute() {
-  openDialog('route', `STOP ${game.room + 2} / ${game.route.length} · ${game.runMode === 'chapter' ? 'THE LOST DRAWING' : game.runMode === 'rush' ? 'BOSS RUSH' : game.room + 1 < 4 ? 'THE FIRST PAGE' : game.room + 1 < 8 ? 'THE SECOND PAGE' : 'THE TORN BINDING'}`, game.routeOptions().length > 1 ? 'Choose your next mark.' : game.room < 0 ? 'Your adventure starts here.' : 'Turn the page.', (game.runMode === 'rush' ? 'Start with stronger hits, extra health, and a faster dash. Between bosses, choose a gift and recover all health.' : NODES[game.node]?.outro) || 'Every route moves you forward. Ink buys gifts at Nib’s shop; recovery stops restore health for free.', true);
+  openDialog('route', `STOP ${game.room + 2} / ${game.route.length} · ${game.runMode === 'chapter2' ? 'THE DROWNED HARBOR' : game.runMode === 'chapter' ? 'THE LOST DRAWING' : game.runMode === 'rush' ? 'BOSS RUSH' : game.room + 1 < 4 ? 'THE FIRST PAGE' : game.room + 1 < 8 ? 'THE SECOND PAGE' : 'THE TORN BINDING'}`, game.routeOptions().length > 1 ? 'Choose your next mark.' : game.room < 0 ? 'Your adventure starts here.' : 'Turn the page.', (game.runMode === 'rush' ? 'Start with stronger hits, extra health, and a faster dash. Between bosses, choose a gift and recover all health.' : NODES[game.node]?.outro) || 'Every route moves you forward. Ink buys gifts at Nib’s shop; recovery stops restore health for free.', true);
   wallet();
   if (game.runMode === 'chapter') inner.append(text('p', game.room < 3 ? 'Find Rook in the archive.' : 'Rook is safe. Stop the Brute and restore the road home.', 'chapter-objective'));
+  if (game.runMode === 'chapter2') inner.append(text('p', game.room < 6 ? 'Restore the harbor beacon.' : 'The beacon is lit. Stop the Tidekeeper.', 'chapter-objective'));
+  decisionRecap();
   const grid = text('div', '', `route-choices ${game.routeOptions().length === 1 ? 'single' : ''}`);
-  const labels = { combat: 'BATTLE', elite: 'HARDER BATTLE · MORE INK', shop: 'SHOP', rest: 'RECOVERY', boss: 'BOSS' };
+  const labels = { combat: 'BATTLE', elite: 'HARDER BATTLE · MORE INK', shop: 'SHOP', rest: 'RECOVERY', boss: 'BOSS', choice: 'STORY CHOICE' };
   for (const id of game.routeOptions()) {
-    const n = NODES[id], card = button('', () => { closeDialog(); game.chooseRoute(id); }, `upgrade-card route-card ${n.kind}`);
-    card.append(text('span', labels[n.kind], 'upgrade-tag'), text('strong', n.title), text('p', n.note));
-    if (n.waves) {
+    const n = game.describeNode(id), card = button('', () => { closeDialog(); game.chooseRoute(id); }, `upgrade-card route-card ${n.kind}`);
+    card.append(text('span', n.explore ? 'EXPLORATION' : labels[n.kind], 'upgrade-tag'), text('strong', n.title), text('p', n.note));
+    if (n.waves && !n.explore) {
       const ink = n.reward + n.waves.flat().reduce((sum, type) => sum + ENEMIES[type].ink, 0);
-      card.append(text('small', `${n.waves.length} ${n.waves.length === 1 ? 'wave' : 'waves'} · ${ink} ink${['knight', 'eraser'].includes(id) ? '' : game.runMode === 'rush' ? ' · a gift + full health' : ' · a gift + 16 health'}`, 'route-reward'));
+      card.append(text('small', `${n.waves.length} ${n.waves.length === 1 ? 'wave' : 'waves'} · ${ink} ink${['knight', 'eraser', 'tidekeeper'].includes(id) ? '' : game.runMode === 'rush' ? ' · a gift + full health' : ' · a gift + 16 health'}`, 'route-reward'));
     }
     card.append(text('span', 'Take this route →', 'upgrade-pick')); grid.append(card);
   }
@@ -150,6 +159,7 @@ function showShop() {
 }
 function showBuild() {
   openDialog('build', 'THIS RUN', WEAPONS[game.weapon].name, WEAPONS[game.weapon].description, true); wallet();
+  decisionRecap();
   const list = text('ul', '', 'build-detail');
   if (game.keepsake) { const k = KEEPSAKES[game.keepsake], row = text('li', ''); row.append(text('strong', k.name), text('span', k.description)); list.append(row); }
   for (const id of game.upgrades) {
@@ -223,13 +233,13 @@ function showJournal() {
   actions(button('Back', showMode, 'primary'));
 }
 function showHistory() {
-  openDialog('history', 'YOUR RECENT PAGES', 'Every attempt leaves a mark.', 'The last ten finished attempts are kept on this browser and device. Combat time includes retries; menus are excluded.', true);
+  openDialog('history', 'YOUR RECENT PAGES', 'Every attempt leaves a mark.', 'The last ten finished attempts are kept on this browser and device. Active play time includes retries; menus are excluded.', true);
   const profile = store.profile(), records = store.history();
   for (const [id, w] of Object.entries(WEAPONS)) inner.append(text('p', t('Boss Rush · {0}: {1}', { 0: w.name, 1: profile.rushBest[id] ? timeLabel(profile.rushBest[id]) : t('No clear yet') }), 'build-list'));
   if (!records.length) inner.append(text('p', 'Finish an adventure attempt or Boss Rush to start your history.', 'build-list'));
   for (const r of records) {
     const row = text('article', '', 'history-row');
-    row.append(text('strong', `${r.result === 'victory' ? 'Victory' : 'Defeat'} · ${WEAPONS[r.weapon].name}`), text('p', t('{0} · {1} · stop {2}', { 0: t(r.mode === 'chapter' ? 'Chapter I' : r.mode === 'rush' ? 'Boss Rush' : 'Adventure'), 1: timeLabel(r.time), 2: r.stop })), text('small', t('Seed {0} · {1}', { 0: r.seed, 1: r.date.slice(0, 10) })));
+    row.append(text('strong', `${r.result === 'victory' ? 'Victory' : 'Defeat'} · ${WEAPONS[r.weapon].name}`), text('p', t('{0} · {1} · stop {2}', { 0: t(r.mode === 'chapter2' ? 'Chapter II' : r.mode === 'chapter' ? 'Chapter I' : r.mode === 'rush' ? 'Boss Rush' : 'Adventure'), 1: timeLabel(r.time), 2: r.stop })), text('small', t('Seed {0} · {1}', { 0: r.seed, 1: r.date.slice(0, 10) })));
     const details = text('details', ''); details.append(text('summary', 'Route and build'), text('p', r.path.map(id => t(NODES[id].title)).join(' → ')), text('p', r.build.map(id => t(UPGRADES.find(u => u.id === id).name)).join(' · ') || 'No gifts')); row.append(details); inner.append(row);
   }
   actions(button('Back', showMode, 'primary')); subactions(button('Copy a bug report', showReport, ''));
@@ -252,6 +262,14 @@ function showMode() {
     inner.append(text('p', NODES[game.node].note, 'dialog-quote'));
     actions(button('Continue →', () => { closeDialog(); game.beginEncounter(); }, 'primary'));
     subactions(button('Save & title', () => game.title(), ''));
+  } else if (game.mode === 'choice') {
+    openDialog('choice', 'A CHOICE THAT STAYS', game.currentNode.title, game.currentNode.note, true);
+    const cards = text('div', '', 'route-choices');
+    for (const c of HARBOR_CHOICES[game.currentNode.decision]) {
+      const card = button('', () => { if (game.chooseDecision(c.id)) closeDialog(); }, 'upgrade-card choice-card');
+      card.append(text('strong', c.title), text('p', c.text), text('span', 'Choose this path →', 'upgrade-pick')); cards.append(card);
+    }
+    inner.append(cards); subactions(button('Save & title', () => game.title(), ''));
   } else if (game.mode === 'shop') showShop();
   else if (game.mode === 'event') {
     const event = EVENTS.find(e => e.id === game.eventId);
@@ -292,15 +310,16 @@ function showMode() {
   } else if (game.mode === 'death') {
     openDialog('death', 'A ROUGH DRAFT', 'Not your last line.', `${game.deathSource} caught you. Retry from this encounter’s entrance with the same build, ink, health, and enemies.`);
     inner.append(text('p', game.lastHit?.reason || game.currentNode.note, 'dialog-quote')); stats();
-    actions(button('Retry this encounter →', () => { closeDialog(); game.retryRoom(); }, 'primary'), button('New adventure', () => launch()));
+    actions(button('Retry this encounter →', () => { closeDialog(); game.retryRoom(); }, 'primary'), button('New adventure', () => launch(false, false, game.runMode === 'practice' ? 'chapter' : game.runMode)));
     subactions(button('See your build', showBuild, ''), button('Copy a bug report', showReport, ''), button('Title screen', () => game.title(), ''), link('Back to the arcade', '../../'));
   } else if (game.mode === 'victory') {
-    openDialog('victory', game.runMode === 'chapter' ? 'CHAPTER I COMPLETE' : game.runMode === 'rush' ? 'BOSS RUSH COMPLETE' : 'THREE CHAPTERS COMPLETE', 'Room for every drawing.', game.runMode === 'chapter' ? 'The Brute stops erasing. Rook draws a doorway in the last blank space. Beyond it, Nib has set a third place at the table. You brought someone home.' : game.runMode === 'rush' ? 'The Brute, the Queen, and the Knight have fallen. Your time is saved for this weapon.' : 'The Knight sets down his sword. Together, the drawings take the weight of the binding. The book holds. There is room for everyone, even the unfinished.');
+    openDialog('victory', game.runMode === 'chapter2' ? 'CHAPTER II COMPLETE' : game.runMode === 'chapter' ? 'CHAPTER I COMPLETE' : game.runMode === 'rush' ? 'BOSS RUSH COMPLETE' : 'THREE CHAPTERS COMPLETE', 'Room for every drawing.', game.runMode === 'chapter2' ? 'The tower releases its hold. Beacon light reaches every doorway, and the harbor rises above the ink. The drawings can leave, or stay and make a home together.' : game.runMode === 'chapter' ? 'The Brute stops erasing. Rook draws a doorway in the last blank space. Beyond it, Nib has set a third place at the table. You brought someone home.' : game.runMode === 'rush' ? 'The Brute, the Queen, and the Knight have fallen. Your time is saved for this weapon.' : 'The Knight sets down his sword. Together, the drawings take the weight of the binding. The book holds. There is room for everyone, even the unfinished.');
     if (game.runMode === 'chapter') inner.append(text('p', 'The unfinished quill is unlocked. Choose it at home to change your next run.', 'chapter-objective'));
+    if (game.runMode === 'chapter2') { inner.append(text('p', 'The harbor lantern is unlocked. Its first-kill healing works in either chapter.', 'chapter-objective')); decisionRecap(); }
     inner.append(text('p', '“Perhaps the Artist didn’t leave us an ending. Perhaps they left us room.” — Nib', 'dialog-quote'));
     stats(); inner.append(text('p', `${WEAPONS[game.weapon].name} · ${game.upgrades.map(id => UPGRADES.find(u => u.id === id).name).join(' · ') || 'No gifts'}`, 'build-list'));
-    actions(button(game.runMode === 'chapter' ? 'Return home →' : 'Draw another adventure →', () => game.runMode === 'chapter' ? game.title() : launch(false, true, game.runMode), 'primary'));
-    subactions(button('Your build', showBuild, ''), button('Title screen', () => game.title(), ''), link('Back to the arcade', '../../'), link('Release notes ↗', '../../news/#stick-and-swing-2-3'));
+    actions(button(game.authored ? 'Return home →' : 'Draw another adventure →', () => game.authored ? game.title() : launch(false, true, game.runMode), 'primary'));
+    subactions(button('Your build', showBuild, ''), button('Title screen', () => game.title(), ''), link('Back to the arcade', '../../'), link('Release notes ↗', '../../news/#stick-and-swing-2-4'));
   } else closeDialog();
   $('pause-button').disabled = !['combat', 'tutorial'].includes(game.mode);
   $('build-button').disabled = ['title', 'tutorial'].includes(game.mode);
@@ -309,7 +328,7 @@ function showMode() {
 }
 function stats() {
   const grid = text('div', '', 'stats-grid');
-  for (const [value, label] of [[timeLabel(game.stats.time), 'Combat time'], [game.stats.kills, 'Enemies cleared'], [game.stats.parries, 'Perfect blocks'], [game.stats.retries, 'Retries'], [game.stats.inkEarned, 'Ink earned'], [game.stats.damageTaken, 'Damage taken']]) {
+  for (const [value, label] of [[timeLabel(game.stats.time), 'Active play time'], [game.stats.kills, 'Enemies cleared'], [game.stats.parries, 'Perfect blocks'], [game.stats.retries, 'Retries'], [game.stats.inkEarned, 'Ink earned'], [game.stats.damageTaken, 'Damage taken']]) {
     const e = text('div', '', 'stat-card'); e.append(text('strong', String(value)), text('span', label)); grid.append(e);
   }
   inner.append(grid);
@@ -323,7 +342,7 @@ function showSettings() {
     ['holdAttack', 'Hold to attack', 'Hold your attack button to chain sword swings.'],
     ['contrast', 'High-contrast arena', 'Brighter outlines for enemies, attacks, and hazards.'],
     ['cues', 'Attack symbols', 'Show symbols for blockable attacks, floor hazards, and recovery openings.'],
-    ['coach', 'Contextual guidance', 'Show short control hints during Chapter I.'],
+    ['coach', 'Contextual guidance', 'Show short control hints during both chapters.'],
   ]) {
     const label = text('label', '', 'setting'), words = text('span', '');
     words.append(text('strong', name), text('small', description));
@@ -397,11 +416,12 @@ function setText(id, value) { const translated = t(value); if (uiCache[id] !== t
 function setWidth(id, value) { const rounded = Math.round(clamp(value, 0, 1) * 100); if (uiCache[id] !== rounded) { $(id).style.width = `${rounded}%`; uiCache[id] = rounded; } }
 function updateHUD() {
   const p = game.player;
-  $('chapter-guide').hidden = game.runMode !== 'chapter' || game.mode !== 'combat';
-  if (game.runMode === 'chapter' && game.mode === 'combat') {
+  $('chapter-guide').hidden = !game.authored || game.mode !== 'combat';
+  if (game.authored && game.mode === 'combat') {
     const remaining = game.fragments.filter(f => !f.secret && !f.collected).length;
     setText('objective-text', game.exitReady ? 'The way is clear. Enter the doorway.' : remaining ? `Restore Rook’s wings: ${3 - remaining} / 3 fragments` : game.node === 'eraser' ? 'Defeat the Brute. Restore the road home.' : 'Clear the room to open the way.');
-    const prompts = { swing: 'Swing', guard: 'Guard', dash: 'Dash', ability: 'Ability' }, action = game.currentNode.lesson;
+    if (game.runMode === 'chapter2' && !game.exitReady) setText('objective-text', game.currentNode.explore ? `Waymarks: ${game.fragments.length - remaining} / ${game.fragments.length}` : game.node === 'tidekeeper' ? 'Break the anchors. Defeat the Tidekeeper.' : 'Clear the room to open the way.');
+    const prompts = { swing: 'Swing', guard: 'Guard', dash: 'Dash', ability: 'Ability' }, action = game.currentNode.explore ? 'dash' : game.currentNode.lesson;
     const binding = action === 'swing' ? 'attack' : action;
     $('coach-text').hidden = !settings.coach;
     $('coach-text').textContent = settings.coach ? (prompts[action] ? `${t(prompts[action])} · ${keyLabel(settings.bindings[binding])} — ` : '') + t(game.currentNode.note) : '';
@@ -414,12 +434,12 @@ function updateHUD() {
   setText('ability-name', game.forms.ability === 'alternate' ? ABILITIES[game.weapon].alternate : ABILITIES[game.weapon].name);
   setText('ability-value', p.abilityCd > 0 ? `${p.abilityCd.toFixed(1)}s` : 'Ready'); setWidth('ability-fill', 1 - p.abilityCd / p.abilityCooldown);
   setText('touch-ability-state', p.abilityCd > 0 ? `${p.abilityCd.toFixed(1)}s` : 'Ready');
-  const inRun = !['title', 'tutorial'].includes(game.mode), chapter = game.runMode === 'practice' ? 'PRACTICE' : game.runMode === 'chapter' ? 'CHAPTER 01' : game.runMode === 'rush' ? 'BOSS RUSH' : game.room >= 8 ? 'CHAPTER 03' : game.room >= 4 ? 'CHAPTER 02' : 'CHAPTER 01';
+  const inRun = !['title', 'tutorial'].includes(game.mode), chapter = game.runMode === 'practice' ? 'PRACTICE' : game.runMode === 'chapter2' ? 'CHAPTER 02' : game.runMode === 'chapter' ? 'CHAPTER 01' : game.runMode === 'rush' ? 'BOSS RUSH' : game.room >= 8 ? 'CHAPTER 03' : game.room >= 4 ? 'CHAPTER 02' : 'CHAPTER 01';
   setText('chapter-label', game.mode === 'tutorial' ? 'THE BASICS' : chapter);
   setText('room-value', game.runMode === 'practice' ? 'PRACTICE' : inRun && game.room >= 0 ? `STOP ${game.room + 1} / ${game.route.length}` : 'THE ADVENTURE');
   setText('weapon-value', WEAPONS[game.weapon].name); setText('ink-value', `${game.ink} ink`);
   setText('combat-state', p.broken > 0 ? 'Guard broken · release to recover' : p.counter > 0 ? 'Counter ready · swing now' : '');
-  setText('wave-value', game.mode === 'combat' ? `WAVE ${game.wave + 1} / ${game.currentNode.waves.length}` : 'YOU ARE LINE');
+  setText('wave-value', game.currentNode?.explore && game.mode === 'combat' ? 'EXPLORATION' : game.mode === 'combat' ? `WAVE ${game.wave + 1} / ${game.currentNode.waves.length}` : 'YOU ARE LINE');
   setText('touch-dash-state', p.dashCd > 0 ? `${p.dashCd.toFixed(1)}s` : 'Ready');
   const nodes = $('room-progress').children;
   for (let i = 0; i < nodes.length; i++) {
@@ -433,6 +453,7 @@ function updateHUD() {
   const boss = game.enemies.find(e => (e.boss || e.champion) && e.spawn <= 0 && e.hp > 0);
   $('boss-health').hidden = !boss || game.mode !== 'combat';
   if (boss) { setWidth('boss-fill', boss.hp / boss.maxHp); setText('boss-name', boss.name); setText('boss-phase', boss.champion ? 'MINIBOSS' : boss.phase === 2 ? 'PHASE II' : 'PHASE I'); }
+  if (boss?.type === 'tidekeeper') { const anchors = game.props.filter(o => o.type === 'anchor' && o.hp > 0).length; if (anchors) setText('boss-phase', `ANCHORS: ${anchors}`); }
   $('room-banner').hidden = game.mode !== 'combat' || game.banner.time <= 0 || !!boss;
   if (game.banner.time > 0) { setText('banner-title', game.banner.title); setText('banner-text', game.banner.text); }
 }

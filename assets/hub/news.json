@@ -1,5 +1,32 @@
 [
   {
+    "id": "stick-and-swing-2-4",
+    "date": "2026-09-05",
+    "type": "Release",
+    "game": "Stick & Swing",
+    "version": "2.4",
+    "title": "The Drowned Harbor",
+    "summary": "Chapter II takes you beyond the archive. Explore a flooded harbor, make choices that change later encounters, and break the Tidekeeper’s hold.",
+    "featured": true,
+    "sections": [
+      { "title": "A journey with room to breathe", "items": [
+        "Ten stops include two exploration crossings, two lasting story decisions, route forks, and the Tidekeeper finale. Dash over gaps and restore the beacon’s two lenses.",
+        "Help the ferryman for healing lanterns and a memory, or take 35 ink and face an extra ambush. Drain later streets, or leave them flooded to break a boss anchor early. Every consequence is shown before you choose."
+      ] },
+      { "title": "Enemies that work together", "items": [
+        "Ink Menders heal their allies; interrupt the glowing link. Paper Leeches drain health and guard; strike them, retreat, or use cover to break the tether.",
+        "The Tidekeeper’s anchors reduce incoming damage by 60%. Break them, escape marked flood lanes, and interrupt the Menders it summons in its second phase."
+      ] },
+      { "title": "Bring something back", "items": [
+        "Three new memories and two keepsakes join your home. The beacon compass shortens ability cooldowns by 20%; the harbor lantern heals 8 health on the first defeat of an enemy in each wave.",
+        "Start either chapter from home. Chapter II begins with two gifts and 20 ink; memories and weapon mastery carry between journeys. Your choices stay in the route recap and checkpoint."
+      ] },
+      { "title": "Ready in your language", "paragraph": "The chapter, new enemy journal entries, menus, and patch notes support all six website languages. Existing saves remain compatible. New choices are included in the bug report you can copy and share." }
+    ],
+    "link": "../games/stick-and-swing/",
+    "linkLabel": "Play Chapter II"
+  },
+  {
     "id": "stick-and-swing-2-3",
     "date": "2026-09-05",
     "type": "Release",
@@ -7,7 +34,7 @@
     "version": "2.3",
     "title": "The Lost Drawing",
     "summary": "Rescue Rook, restore the road home, and return with a memory worth keeping. Update 2.3 introduces an authored first chapter and a home between attempts.",
-    "featured": true,
+    "featured": false,
     "sections": [
       { "title": "A chapter with a purpose", "items": [
         "Ten stops, branching routes, two minibosses, and a final duel with the Brute. Collect Rook’s three wing fragments and explore a vault with a hidden memory.",

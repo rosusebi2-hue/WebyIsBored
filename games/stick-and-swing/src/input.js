@@ -1,5 +1,5 @@
-import { WORLD, DEFAULT_BINDINGS, clamp } from './config.js?v=2.3.0';
-import { idleInput } from './engine.js?v=2.3.0';
+import { WORLD, DEFAULT_BINDINGS, clamp } from './config.js?v=2.4.0';
+import { idleInput } from './engine.js?v=2.4.0';
 export const keyLabel = code => code.replace(/^Key|^Digit/, '').replace('ShiftLeft', 'Left Shift').replace('ShiftRight', 'Right Shift').replace('Arrow', '');
 export class Input {
   constructor(canvas, active, onPause, unlock, settings = {}) {
