@@ -1,5 +1,72 @@
 [
   {
+    "id": "stick-and-swing-2-2",
+    "date": "2026-09-05",
+    "type": "Release",
+    "game": "Stick & Swing",
+    "version": "2.2",
+    "title": "The Living Sketchbook",
+    "summary": "Three chapters. New ways to fight. A book full of drawings worth finding. Update 2.2 makes the adventure bigger and gives you more ways to make it yours.",
+    "featured": true,
+    "sections": [
+      {
+        "title": "Beyond the second page",
+        "items": [
+          "The Torn Binding extends the adventure from eight to twelve stops. Face the Margin Knight, a new final boss with sword and shield stances.",
+          "Meet Crossblade, Needle Scribe, Shield Weaver, and Inkwright. Six new arena layouts add breakable cover, moving ink, and explosive barrels.",
+          "Six story events offer choices with visible costs and rewards. Rescue forgotten drawings or accept the hidden Palimpsest duel to earn its unique seal."
+        ]
+      },
+      {
+        "title": "Master your blade",
+        "items": [
+          "Each weapon has an active ability. Lunge with Scrapsteel, smash the ground with Pagebreaker, or cast a flame fan with Emberbrand. Use Q by default, or the Ability touch button.",
+          "Three mastery challenges per weapon unlock an alternate finishing strike, an alternate ability, and a cosmetic scarf. Equip them in the Workshop for your next run.",
+          "Twenty-six gifts now include ability upgrades and new ways to combine your build. Your build page explains useful gift combinations."
+        ]
+      },
+      {
+        "title": "Play your way",
+        "items": [
+          "Practice any enemy or boss phase with optional invincibility and visible ranges. Your adventure is preserved; practice grants no progression.",
+          "Boss Rush puts the three main bosses back to back. Start with three gifts, prepare between fights, and track a best time for each weapon.",
+          "Remap keyboard controls, use a standard controller, and choose touch control size and side. Weapon effects, enemy silhouettes, chapter scenery, and combat audio have been expanded."
+        ]
+      },
+      {
+        "title": "Keep your story",
+        "items": [
+          "The Workshop tracks mastery, the journal remembers discovered enemies and rescued drawings, and recent history keeps your last ten completed attempts.",
+          "A copyable bug report includes the game version, seed, route, build, controls, and recent errors. Add what happened before sharing it; nothing is sent automatically.",
+          "Compatible 2.1 checkpoints continue into the longer adventure. Older clear records stay saved; twelve-stop adventure and Boss Rush records are tracked separately. Saves remain on this browser and device."
+        ]
+      }
+    ],
+    "link": "../games/stick-and-swing/",
+    "linkLabel": "Play The Living Sketchbook"
+  },
+  {
+    "id": "website-languages",
+    "date": "2026-09-05",
+    "type": "Site update",
+    "game": "WebyIsBored",
+    "version": "1.1",
+    "title": "A small arcade. Six languages.",
+    "summary": "WebyIsBored now welcomes players in English, German, French, Spanish, Romanian, and Russian. Choose your language from the dropdown and make yourself at home.",
+    "sections": [
+      {
+        "title": "Your language, across the arcade",
+        "paragraph": "The shared language selector translates the arcade, News, Coming Soon, and game menus, instructions, and story text. English remains the default. Your choice follows you between pages and is remembered on this browser."
+      },
+      {
+        "title": "A website update",
+        "paragraph": "Language support belongs to the whole website. Future games can use the same shared system, and more languages can be added as the arcade grows."
+      }
+    ],
+    "link": "../",
+    "linkLabel": "Visit the arcade"
+  },
+  {
     "id": "stick-and-swing-2-1",
     "date": "2026-09-05",
     "type": "Release",
@@ -7,7 +74,6 @@
     "version": "2.1",
     "title": "Three blades. Two pages. Your adventure.",
     "summary": "The Adventure Update takes Line beyond the first page. Pick a weapon, choose where to fight and where to recover, spend your ink with Nib, and face the Ink Queen.",
-    "featured": true,
     "sections": [
       {
         "title": "Choose how you fight",

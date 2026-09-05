@@ -4,28 +4,31 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#0b1018">
-  <meta name="description" content="Choose one of three weapons and journey through a branching sketchbook adventure. Fight two bosses, meet Nib, and build your own way to play.">
-  <title>Stick &amp; Swing — The Adventure · WebyIsBored</title>
+  <meta name="description" content="Choose one of three weapons and journey through a branching sketchbook adventure. Explore three chapters, master three weapons, and try Boss Rush or the practice arena.">
+  <title>Stick &amp; Swing — The Living Sketchbook · WebyIsBored</title>
   <link rel="icon" href="../../assets/hub/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="game.css?v=2.1.0">
-  <script type="module" src="src/app.js?v=2.1.0"></script>
+  <link rel="stylesheet" href="game.css?v=2.2.0">
+  <link rel="stylesheet" href="../../assets/i18n/i18n.css?v=1.1.0">
+  <script src="../../assets/i18n/catalog.js?v=1.1.0" defer></script>
+  <script src="../../assets/i18n/i18n.js?v=1.1.0" defer></script>
+  <script type="module" src="src/app.js?v=2.2.0"></script>
 </head>
 <body>
   <div class="game-shell">
     <header class="game-header">
       <a class="arcade-link" href="../../" aria-label="Back to the arcade"><span aria-hidden="true">←</span> The arcade</a>
       <a class="game-wordmark" href="./">STICK <span>&amp;</span> SWING <small>THE ADVENTURE</small></a>
-      <div class="header-actions"><a href="../../news/">News</a><button id="sound-button" type="button" aria-label="Mute sound" aria-pressed="false">Sound on</button><button id="pause-button" type="button" disabled>Pause <span>Ⅱ</span></button></div>
+      <div class="header-actions"><span data-language-slot></span><a href="../../news/">News</a><button id="sound-button" type="button" aria-label="Mute sound" aria-pressed="false">Sound on</button><button id="pause-button" type="button" disabled>Pause <span>Ⅱ</span></button></div>
     </header>
     <main class="play-layout" aria-label="Stick and Swing game">
       <section class="status-bar" aria-label="Player status">
         <div class="health-panel"><div class="meter-label"><span>LINE <span class="health-cross" aria-hidden="true">+</span></span><strong id="health-value">100 / 100</strong></div><div class="meter health-meter" role="meter" aria-label="Health" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100" id="health-meter"><span id="health-fill"></span></div></div>
-        <div class="run-progress"><span class="chapter-label" id="chapter-label">CHAPTER 01</span><ol id="room-progress" aria-label="Run progress"><li aria-label="Stop 1"></li><li aria-label="Stop 2"></li><li aria-label="Stop 3"></li><li class="boss-node" aria-label="Stop 4: The Brute"></li><li aria-label="Stop 5"></li><li aria-label="Stop 6"></li><li aria-label="Stop 7"></li><li class="boss-node" aria-label="Stop 8: The Ink Queen"></li></ol><span id="room-value">THE ADVENTURE</span></div>
-        <div class="ability-panel"><div class="ability"><div class="meter-label"><span>GUARD</span><strong id="guard-value">100</strong></div><div class="meter guard-meter"><span id="guard-fill"></span></div></div><div class="ability"><div class="meter-label"><span>DASH</span><strong id="dash-value">Ready</strong></div><div class="meter dash-meter"><span id="dash-fill"></span></div></div></div>
+        <div class="run-progress"><span class="chapter-label" id="chapter-label">CHAPTER 01</span><ol id="room-progress" aria-label="Run progress"><li aria-label="Stop 1"></li><li aria-label="Stop 2"></li><li aria-label="Stop 3"></li><li class="boss-node" aria-label="Stop 4: The Brute"></li><li aria-label="Stop 5"></li><li aria-label="Stop 6"></li><li aria-label="Stop 7"></li><li class="boss-node" aria-label="Stop 8: The Ink Queen"></li><li aria-label="Stop 9"></li><li aria-label="Stop 10"></li><li aria-label="Stop 11"></li><li class="boss-node" aria-label="Stop 12: The Margin Knight"></li></ol><span id="room-value">THE ADVENTURE</span></div>
+        <div class="ability-panel"><div class="ability active-ability"><div class="meter-label"><span id="ability-name">Lunging strike</span><strong id="ability-value">Ready</strong></div><div class="meter skill-meter"><span id="ability-fill"></span></div></div><div class="ability"><div class="meter-label"><span>GUARD</span><strong id="guard-value">100</strong></div><div class="meter guard-meter"><span id="guard-fill"></span></div></div><div class="ability"><div class="meter-label"><span>DASH</span><strong id="dash-value">Ready</strong></div><div class="meter dash-meter"><span id="dash-fill"></span></div></div></div>
       </section>
       <div class="loadout-bar"><button id="build-button" type="button" disabled><span id="weapon-value">Scrapsteel</span><span class="build-link">View build ↗</span></button><span id="combat-state" role="status"></span><strong id="ink-value">0 ink</strong></div>
       <div class="arena-wrap" id="arena-wrap">
-        <canvas id="arena" width="960" height="600" tabindex="0" aria-label="Game arena. Move with WASD or arrow keys. Attack with Space or left click, guard with F or right click, and dash with Shift. Escape pauses.">This game needs a browser with Canvas support.</canvas>
+        <canvas id="arena" width="960" height="600" tabindex="0" aria-label="Game arena. Controls can be changed in Settings.">This game needs a browser with Canvas support.</canvas>
         <div class="arena-top"><div class="room-banner" id="room-banner" hidden><span id="banner-kicker">THE MARGIN</span><h1 id="banner-title"></h1><p id="banner-text"></p></div><div class="boss-health" id="boss-health" hidden><div><span id="boss-name">THE SCRIBBLED BRUTE</span><strong id="boss-phase">FIRST DRAFT</strong></div><div class="meter boss-meter"><span id="boss-fill"></span></div></div></div>
 
         <div class="arena-corner" id="arena-corner"><span class="corner-line"></span> <span id="wave-value">YOU ARE LINE</span></div>
@@ -33,8 +36,8 @@
         <div class="toast" id="toast" role="status" hidden></div>
       </div>
         <div class="tutorial-card" id="tutorial-card" hidden aria-live="polite"><div class="tutorial-heading"><span id="lesson-count">LESSON 1 / 5</span><button id="skip-tutorial" type="button">Skip lesson →</button></div><h2 id="lesson-title"></h2><p id="lesson-text"></p><small id="lesson-hint"></small></div>
-      <div class="touch-controls" id="touch-controls" aria-label="Touch controls"><div class="joystick" id="joystick" aria-label="Drag to move"><span class="stick-guide"></span><span id="stick-thumb"></span><small>MOVE</small></div><div class="touch-actions"><button class="touch-action guard-action" id="touch-guard" type="button" aria-label="Hold to guard; tap just before impact to parry"><span aria-hidden="true">◇</span>Guard</button><button class="touch-action dash-action" id="touch-dash" type="button" aria-label="Dash"><span aria-hidden="true">»</span>Dash<small id="touch-dash-state">Ready</small></button><button class="touch-action attack-action" id="touch-attack" type="button" aria-label="Hold to swing your sword"><span aria-hidden="true">╱</span>Swing</button></div></div>
-      <footer class="play-footer"><p class="keyboard-hints"><span><kbd>WASD</kbd> move</span><span><kbd>Mouse</kbd> aim</span><span><kbd>Click / Space</kbd> swing</span><span><kbd>Right click / F</kbd> guard</span><span><kbd>Shift</kbd> dash</span></p><p class="touch-hint">Aim assist is on for touch. Hold Swing to combo.</p><span class="save-note" id="save-note">Adventure checkpoints · saved on this device</span></footer>
+      <div class="touch-controls" id="touch-controls" aria-label="Touch controls"><div class="joystick" id="joystick" aria-label="Drag to move"><span class="stick-guide"></span><span id="stick-thumb"></span><small>MOVE</small></div><div class="touch-actions"><button class="touch-action guard-action" id="touch-guard" type="button" aria-label="Hold to guard; tap just before impact to parry"><span aria-hidden="true">◇</span>Guard</button><button class="touch-action dash-action" id="touch-dash" type="button" aria-label="Dash"><span aria-hidden="true">»</span>Dash<small id="touch-dash-state">Ready</small></button><button class="touch-action skill-action" id="touch-ability" type="button" aria-label="Use your weapon ability"><span aria-hidden="true">✦</span>Ability<small id="touch-ability-state">Ready</small></button><button class="touch-action attack-action" id="touch-attack" type="button" aria-label="Hold to swing your sword"><span aria-hidden="true">╱</span>Swing</button></div></div>
+      <footer class="play-footer"><p class="keyboard-hints" id="keyboard-hints"><span><kbd>WASD</kbd> move</span><span><kbd>Mouse</kbd> aim</span><span><kbd>Click / Space</kbd> swing</span><span><kbd>Right click / F</kbd> guard</span><span><kbd>Shift</kbd> dash</span></p><p class="touch-hint">Aim assist is on for touch. Hold Swing to combo.</p><span class="save-note" id="save-note">Adventure checkpoints · saved on this device</span></footer>
     </main>
     <dialog id="game-dialog" aria-labelledby="dialog-title"><div class="dialog-inner" id="dialog-inner"><p class="dialog-eyebrow">THE ADVENTURE</p><h2 id="dialog-title">Stick &amp; Swing</h2><p>Opening your sketchbook…</p></div></dialog>
     <noscript><div class="fallback"><h1>JavaScript is needed to play</h1><p>Enable JavaScript in your browser, then reload this page.</p><a href="../../">Return to the arcade</a></div></noscript>

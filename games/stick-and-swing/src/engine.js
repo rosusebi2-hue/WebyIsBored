@@ -1,7 +1,7 @@
-import { WORLD, TAU, ENEMIES, ROUTE, NODES, LAYOUTS, WEAPONS, LESSONS, UPGRADES, SHOP_HEAL, giftPrice, availableUpgrades, freshStats, createPlayer, playerStats, clamp, distance, angleDelta } from './config.js?v=2.1.0';
-import { validateCheckpoint } from './storage.js?v=2.1.0';
+import { WORLD, TAU, ENEMIES, ROUTE, RUSH_ROUTE, NODES, LAYOUTS, WEAPONS, LESSONS, EVENTS, SHOP_HEAL, giftPrice, availableUpgrades, freshStats, masteryEmpty, createPlayer, clamp, distance, angleDelta } from './config.js?v=2.2.0';
+import { validateCheckpoint } from './storage.js?v=2.2.0';
 
-export const idleInput = () => ({ moveX: 0, moveY: 0, attackHeld: false, attackPressed: false, guardHeld: false, dashPressed: false, aimX: null, aimY: null, autoAim: true });
+export const idleInput = () => ({ moveX: 0, moveY: 0, attackHeld: false, attackPressed: false, guardHeld: false, dashPressed: false, abilityPressed: false, aimX: null, aimY: null, autoAim: true });
 const point = (x, y) => ({ x, y });
 export class Game {
   constructor(store) {
@@ -22,7 +22,15 @@ export class Game {
     this.stats = freshStats();
     this.banner = { title: 'The First Page', text: 'A drawing worth fighting for.', time: 0 };
     this.checkpoint = null;
+    this.runMode = 'adventure'; this.encounter = 'main'; this.forms = { finisher: 'standard', ability: 'standard', appearance: 'classic' };
+    this.eventsSeen = []; this.eventId = null; this.afterReward = 'route'; this.initialSeed = 1; this.runId = 'new';
+    this.props = []; this.bursts = []; this.resetProgress();
   }
+  get route() { return this.runMode === 'rush' ? RUSH_ROUTE : ROUTE; }
+  get currentNode() { return this.runMode === 'practice' ? this.practiceNode : NODES[this.encounter === 'secret' ? 'secret-duel' : this.node]; }
+  resetProgress() { this.pendingMastery = masteryEmpty(); this.pendingDiscovered = new Set(); this.pendingRescued = []; }
+  progressDelta() { return { weapon: this.weapon, mastery: { ...this.pendingMastery }, discovered: [...this.pendingDiscovered], rescued: [...this.pendingRescued] }; }
+  count(metric, amount = 1) { if (this.mode === 'combat' && this.runMode !== 'practice') this.pendingMastery[metric] += amount; }
   emit(type, data = {}) { this.events.push({ type, ...data }); }
   drainEvents() { return this.events.splice(0); }
   random() {
@@ -30,11 +38,14 @@ export class Game {
     return this.seed / 4294967296;
   }
   changeMode(mode) { this.mode = mode; this.emit('mode', { mode }); }
-  startNew(tutorial = false, seed = Date.now() >>> 0, weapon = 'scrapsteel') {
-    if (!Object.hasOwn(WEAPONS, weapon)) return false;
-    this.seed = seed || 1; this.weapon = weapon; this.upgrades = []; this.ink = 0;
+  startNew(tutorial = false, seed = Date.now() >>> 0, weapon = 'scrapsteel', runMode = 'adventure') {
+    if (!Object.hasOwn(WEAPONS, weapon) || !['adventure', 'rush'].includes(runMode)) return false;
+    this.runMode = runMode; this.encounter = 'main'; this.forms = { ...this.store.profile().loadouts[weapon] };
+    this.eventsSeen = []; this.eventId = null; this.afterReward = 'route'; this.lastHit = null; this.resetProgress();
+    this.seed = (seed >>> 0) || 1; this.initialSeed = this.seed; this.runId = `${Date.now().toString(36)}-${this.seed.toString(36)}`;
+    this.weapon = weapon; this.upgrades = runMode === 'rush' ? ['edge', 'heart', 'dash'] : []; this.ink = 0;
     this.stats = freshStats(); this.room = -1; this.node = null; this.path = [];
-    this.player = createPlayer([], undefined, weapon);
+    this.player = createPlayer(this.upgrades, undefined, weapon);
     this.store.clearRun(); this.checkpoint = null; this.resetArena();
     if (tutorial) { this.lesson = 0; this.lessonHits = 0; this.changeMode('tutorial'); this.setupLesson(); }
     else this.showRoute();
@@ -45,6 +56,7 @@ export class Game {
     this.hitStop = 0; this.attackBuffer = 0; this.clearTimer = 0; this.roomClock = 0;
     this.wave = 0; this.waveDelay = 0; this.banner.time = 0;
     this.player.attack = null; this.player.guarding = false; this.player.dash = 0;
+    this.props = []; this.bursts = []; this.sweepCycle = -1;
   }
   setupLesson() {
     this.resetArena();
@@ -81,19 +93,27 @@ export class Game {
     this.showRoute();
   }
   snapshot(phase = this.mode) {
-    return { version: 3, phase, room: this.room, node: this.node, path: [...this.path], weapon: this.weapon,
+    return { version: 4, phase, room: this.room, node: this.node, path: [...this.path], weapon: this.weapon,
       ink: this.ink, upgrades: [...this.upgrades], hp: Math.max(1, this.player.hp), seed: this.seed || 1, stats: { ...this.stats },
+      runMode: this.runMode, encounter: this.encounter, forms: { ...this.forms }, initialSeed: this.initialSeed, runId: this.runId,
+      eventsSeen: [...this.eventsSeen], eventId: phase === 'event' ? this.eventId : null, afterReward: this.afterReward,
       ...(phase === 'reward' ? { choices: [...this.choices] } : {}),
       ...(phase === 'shop' ? { stock: [...this.stock], purchased: [...this.purchased] } : {}) };
   }
   save(phase = this.mode) {
+    if (this.runMode === 'practice') return;
     const value = this.snapshot(phase);
+    if (!validateCheckpoint(value)) throw new Error(`Invalid ${phase} checkpoint at ${this.node}`);
     this.checkpoint = structuredClone(value);
-    if (!this.store.saveRun(value)) this.emit('storageWarning');
+    if (!this.store.saveRun(value, this.progressDelta())) this.emit('storageWarning');
+    this.resetProgress();
   }
   restore(raw = this.store.loadRun()) {
     const value = validateCheckpoint(raw);
     if (!value) return false;
+    this.runMode = value.runMode; this.encounter = value.encounter; this.forms = { ...value.forms };
+    this.initialSeed = value.initialSeed; this.runId = value.runId; this.eventsSeen = [...value.eventsSeen]; this.eventId = value.eventId; this.afterReward = value.afterReward;
+    this.resetProgress();
     this.seed = value.seed; this.weapon = value.weapon; this.upgrades = [...value.upgrades]; this.stats = { ...value.stats };
     this.player = createPlayer(this.upgrades, value.hp, this.weapon); this.room = value.room;
     this.node = value.node; this.path = [...value.path]; this.ink = value.ink; this.resetArena();
@@ -108,14 +128,15 @@ export class Game {
   }
   retryRoom() {
     if (this.mode !== 'death') return false;
+    if (this.runMode === 'practice') return this.startPractice(this.practiceOptions);
     const attemptStats = { retries: this.stats.retries + 1, time: this.stats.time, damageTaken: this.stats.damageTaken, parries: this.stats.parries };
     if (!this.restore(this.checkpoint || this.store.loadRun())) return false;
     Object.assign(this.stats, attemptStats); Object.assign(this.checkpoint.stats, attemptStats);
     if (!this.store.saveRun(this.checkpoint)) this.emit('storageWarning');
     return true;
   }
-  routeOptions() { return ROUTE[this.room + 1] || []; }
-  showRoute() { this.resetArena(); this.changeMode('route'); this.save(); }
+  routeOptions() { return this.route[this.room + 1] || []; }
+  showRoute() { this.encounter = 'main'; this.eventId = null; this.afterReward = 'route'; this.resetArena(); this.changeMode('route'); this.save(); }
   chooseRoute(id) {
     if (this.mode !== 'route' || !this.routeOptions().includes(id)) return false;
     this.room++; this.node = id; this.path.push(id);
@@ -135,20 +156,23 @@ export class Game {
     return true;
   }
   enterCombat() {
-    const node = NODES[this.node];
+    const node = this.currentNode;
     this.resetArena(); this.player = createPlayer(this.upgrades, this.player.hp, this.weapon);
     const layout = LAYOUTS[node.layout];
     this.obstacles = layout.obstacles.map(o => ({ ...o })); this.floorPools = layout.pools.map(o => ({ ...o, lastCycle: -1 }));
+    this.props = (layout.props || []).map(o => ({ ...o, id: `prop-${this.nextId++}`, hp: o.type === 'barrel' ? 20 : 50, maxHp: o.type === 'barrel' ? 20 : 50 }));
+    this.sweepingInk = !!layout.sweep;
     this.changeMode('combat'); this.save(); // Save before seeded spawns, so retries reproduce the entrance.
     this.spawnWave();
     this.banner = { title: node.title, text: node.note, time: 4.5 };
     this.emit('room', { room: this.room });
   }
   spawnWave() {
-    const node = NODES[this.node], positions = [[190, 155], [770, 155], [480, 120], [175, 395], [785, 395]];
+    const node = this.currentNode, positions = [[190, 155], [770, 155], [480, 120], [175, 395], [785, 395]];
     node.waves[this.wave].forEach((type, i) => {
       const [x, y] = ENEMIES[type].boss ? [480, 165] : positions[i % positions.length];
-      this.spawn(type, x + (ENEMIES[type].boss ? 0 : this.random() * 24 - 12), y, 1.1 + i * .35);
+      const e = this.spawn(type, x + (ENEMIES[type].boss ? 0 : this.random() * 24 - 12), y, 1.1 + i * .35);
+      if (this.runMode === 'practice' && e.boss && this.practiceOptions.phase === 2) { e.hp = e.maxHp * .49; e.phase = 2; }
     });
     this.clearTimer = 0;
     if (this.wave) this.emit('note', { text: `Wave ${this.wave + 1} / ${node.waves.length}` });
@@ -185,7 +209,9 @@ export class Game {
     const e = { id: this.nextId++, type, ...def, maxHp: def.hp, x, y, facing: 0,
       state: 'approach', stateTime: 0, windup: 0, cooldown: .65, spawn: delay,
       vx: 0, vy: 0, flash: 0, stun: 0, walk: 0, pattern: 0, phase: 1, hit: false, burn: 0, burnTick: .5 };
-    this.enemies.push(e); return e;
+    this.enemies.push(e);
+    if (this.mode === 'combat' && this.runMode !== 'practice') this.pendingDiscovered.add(type);
+    return e;
   }
   pause() {
     if (!['combat', 'tutorial'].includes(this.mode)) return;
@@ -195,18 +221,55 @@ export class Game {
   title() { this.resetArena(); this.player = createPlayer(); this.changeMode('title'); }
   chooseUpgrade(id) {
     if (this.mode !== 'reward' || !this.choices.includes(id) || this.upgrades.includes(id)) return false;
-    this.applyUpgrade(id); this.player.hp = Math.min(this.player.maxHp, this.player.hp + 16);
-    this.showRoute(); return true;
+    this.applyUpgrade(id); this.finishReward(); return true;
   }
-  skipEmptyReward() { if (this.mode === 'reward' && this.choices.length === 0) { this.player.hp = Math.min(this.player.maxHp, this.player.hp + 16); this.showRoute(); } }
+  finishReward() {
+    this.player.hp = this.runMode === 'rush' ? this.player.maxHp : Math.min(this.player.maxHp, this.player.hp + 16);
+    if (this.afterReward === 'event') this.openEvent(); else this.showRoute();
+  }
+  skipEmptyReward() { if (this.mode === 'reward' && this.choices.length === 0) this.finishReward(); }
+  openEvent() {
+    const available = EVENTS.filter(e => !this.eventsSeen.includes(e.id));
+    if (!available.length) { this.showRoute(); return; }
+    this.eventId = this.room === 7 && !this.eventsSeen.includes('duel') ? 'duel' : this.shuffle(available)[0].id;
+    this.afterReward = 'route'; this.changeMode('event'); this.save();
+  }
+  chooseEvent(id) {
+    if (this.mode !== 'event') return false;
+    const choice = EVENTS.find(e => e.id === this.eventId)?.choices.find(c => c.id === id);
+    if (!choice || this.ink + (choice.ink || 0) < 0 || this.player.hp <= (choice.hurt || 0)) return false;
+    this.eventsSeen.push(this.eventId);
+    if (choice.rescue) this.pendingRescued.push(this.eventId);
+    if (choice.ink > 0) this.addInk(choice.ink);
+    else if (choice.ink < 0) { this.ink += choice.ink; this.stats.spent -= choice.ink; }
+    this.player.hp = Math.min(this.player.maxHp, this.player.hp + (choice.heal || 0) - (choice.hurt || 0));
+    this.eventId = null;
+    if (choice.secret) { this.encounter = 'secret'; this.enterCombat(); } else this.showRoute();
+    return true;
+  }
+  startPractice(options = {}) {
+    const { enemy = 'scrapper', weapon = this.weapon, phase = 1, invincible = true, ranges = true } = options;
+    if (!Object.hasOwn(ENEMIES, enemy) || !Object.hasOwn(WEAPONS, weapon)) return false;
+    this.practiceOptions = { enemy, weapon, phase: phase === 2 ? 2 : 1, invincible: !!invincible, ranges: !!ranges };
+    this.runMode = 'practice'; this.encounter = 'main'; this.weapon = weapon; this.forms = { ...this.store.profile().loadouts[weapon] };
+    this.upgrades = []; this.stats = freshStats(); this.ink = 0; this.resetProgress();
+    this.practiceNode = { title: 'Practice arena', note: 'Experiment freely. Your adventure is kept safe.', layout: 'open', waves: [[enemy]], reward: 0, chapter: 1 };
+    this.player = createPlayer([], undefined, weapon); this.enterCombat(); return true;
+  }
+  finishAttempt(victory) {
+    if (this.runMode === 'practice') return;
+    const record = { id: `${this.runId}-${victory ? 'win' : `loss-${this.stats.retries}`}`, weapon: this.weapon, mode: this.runMode,
+      result: victory ? 'victory' : 'defeat', time: this.stats.time, seed: this.initialSeed, stop: this.room + 1, date: new Date().toISOString(), path: [...this.path], build: [...this.upgrades] };
+    if (!this.store.finishAttempt(record, this.progressDelta(), victory)) this.emit('storageWarning');
+    this.resetProgress();
+  }
   roomCleared() {
     if (this.mode !== 'combat') return;
     this.projectiles = []; this.rings = []; this.hazards = []; this.player.attack = null;
-    this.addInk(NODES[this.node].reward);
-    if (this.node === 'queen') {
-      const profile = this.store.profile(); profile.adventureWins++;
-      profile.adventureBest = Math.min(profile.adventureBest || Infinity, this.stats.time);
-      this.store.saveProfile(profile); this.store.clearRun(); this.checkpoint = null;
+    if (this.runMode === 'practice') { this.changeMode('practiceResult'); return; }
+    this.addInk(this.currentNode.reward);
+    if (this.node === 'knight' && this.encounter === 'main') {
+      this.finishAttempt(true); this.checkpoint = null;
       this.changeMode('victory'); this.emit('victory'); return;
     }
     const available = availableUpgrades(this.weapon, this.upgrades);
@@ -214,12 +277,14 @@ export class Game {
     const ordered = this.shuffle(available), signature = ordered.find(u => u.weapon);
     this.choices = ordered.slice(0, 3).map(u => u.id);
     if (signature && !this.choices.includes(signature.id)) this.choices[this.choices.length - 1] = signature.id;
+    if (this.encounter === 'secret' && !this.upgrades.includes('seal')) this.choices = ['seal'];
+    this.afterReward = this.runMode === 'adventure' && this.encounter === 'main' && [1, 4, 7, 9].includes(this.room) ? 'event' : 'route';
     this.changeMode('reward'); this.save(); this.emit('clear');
   }
   moveBody(body, dx, dy) {
     body.x = clamp(body.x + dx, WORLD.inset + body.radius, WORLD.width - WORLD.inset - body.radius);
     body.y = clamp(body.y + dy, WORLD.inset + body.radius, WORLD.height - WORLD.inset - body.radius);
-    for (const o of this.obstacles) {
+    for (const o of [...this.obstacles, ...this.props.filter(o => o.hp > 0)]) {
       let vx = body.x - o.x, vy = body.y - o.y, d = Math.hypot(vx, vy), min = o.radius + body.radius;
       if (d < min) { if (d < .001) { vx = 1; vy = 0; d = 1; } body.x = o.x + vx / d * min; body.y = o.y + vy / d * min; }
     }
@@ -251,14 +316,14 @@ export class Game {
     } else if (this.mode === 'combat' && this.enemies.length === 0) {
       this.clearTimer += dt;
       if (this.clearTimer > 1.2) {
-        if (this.wave + 1 < NODES[this.node].waves.length) { this.wave++; this.spawnWave(); }
+        if (this.wave + 1 < this.currentNode.waves.length) { this.wave++; this.spawnWave(); }
         else this.roomCleared();
       }
     }
   }
   updatePlayer(dt, input) {
     const p = this.player;
-    for (const key of ['dashCd', 'attackCd', 'comboWindow', 'counter', 'invulnerable', 'broken', 'guardDelay', 'flash']) p[key] = Math.max(0, p[key] - dt);
+    for (const key of ['dashCd', 'attackCd', 'comboWindow', 'counter', 'invulnerable', 'broken', 'guardDelay', 'flash', 'abilityCd', 'skillRush', 'momentumTime', 'fortify']) p[key] = Math.max(0, p[key] - dt);
     if (!p.comboWindow && !p.attack) p.combo = 0;
     let mx = Number.isFinite(input.moveX) ? input.moveX : 0, my = Number.isFinite(input.moveY) ? input.moveY : 0;
     const magnitude = Math.hypot(mx, my);
@@ -270,10 +335,13 @@ export class Game {
       if (target) p.facing = Math.atan2(target.y - p.y, target.x - p.x);
       else if (magnitude > .1) p.facing = Math.atan2(my, mx);
     } else if (magnitude > .1) p.facing = Math.atan2(my, mx);
+    if (input.abilityPressed) this.useAbility();
     if (input.dashPressed && p.dashCd === 0 && !p.broken) {
       const angle = magnitude > .1 ? Math.atan2(my, mx) : p.facing;
       p.dashX = Math.cos(angle); p.dashY = Math.sin(angle); p.dash = .19; p.dashCd = p.dashCooldown;
       p.invulnerable = .23; p.guarding = false; p.attack = null;
+      p.momentumTime = p.momentum ? 1.5 : 0;
+      if (p.cinderstep) this.hazards.push({ x: p.x, y: p.y, radius: 43, warning: 0, life: 1.5, tick: 0, friendly: true, damage: 6 });
       this.emit('dash', { x: p.x, y: p.y, angle });
     }
     const wasGuarding = p.guarding;
@@ -281,7 +349,7 @@ export class Game {
     p.guarding = !!input.guardHeld && p.dash <= 0 && !p.attack && !p.broken;
     if (p.guarding && !wasGuarding) { p.guardAge = 0; this.emit('guard'); }
     if (p.guarding) p.guardAge += dt;
-    else { p.guardAge = 9; if (!p.guardDelay && !p.broken) p.guard = Math.min(100, p.guard + dt * 38); }
+    else { p.guardAge = 9; if (!p.guardDelay && !p.broken) p.guard = Math.min(p.maxGuard, p.guard + dt * 38); }
     if (p.dash > 0) {
       p.dash -= dt; this.moveBody(p, p.dashX * 820 * dt, p.dashY * 820 * dt);
       p.vx = p.dashX * 200; p.vy = p.dashY * 200;
@@ -292,6 +360,12 @@ export class Game {
       this.moveBody(p, p.vx * dt, p.vy * dt);
     }
     p.walk += Math.hypot(p.vx, p.vy) * dt / 28;
+    if (p.skillRush > 0) {
+      for (const e of this.enemies) if (e.hp > 0 && !e.spawn && !p.skillHits.has(e.id) && distance(p, e) < 72 + e.radius) {
+        p.skillHits.add(e.id); this.hurtEnemy(e, 40 * (p.needle ? 1.5 : 1), p.facing, 'ability');
+      }
+      for (const o of this.props) if (o.hp > 0 && !p.skillHits.has(o.id) && distance(p, o) < 72 + o.radius) { p.skillHits.add(o.id); this.hurtProp(o, 40); }
+    }
     if (input.attackPressed) this.attackBuffer = .2;
     else this.attackBuffer = Math.max(0, (this.attackBuffer || 0) - dt);
     if ((input.attackHeld || this.attackBuffer > 0) && !p.guarding && p.dash <= 0 && !p.broken && !p.attackCd) this.swing();
@@ -308,6 +382,10 @@ export class Game {
       range: w.range[i] * p.reach, arc: w.arc[i], color: w.color,
       damage: w.damage[i] * p.damage * (p.counter > 0 ? p.counterMultiplier : 1) * (third && p.impact ? 1.45 : 1),
       hit: new Set(), echo: false, wave: false };
+    if (third && this.forms.finisher === 'alternate') {
+      const alternate = p.weapon === 'scrapsteel' ? [45, 155, .7] : p.weapon === 'pagebreaker' ? [34, 112, TAU] : [17, 120, TAU];
+      p.attack.damage *= alternate[0] / w.damage[i]; p.attack.range = alternate[1] * p.reach; p.attack.arc = alternate[2]; p.attack.alternate = true;
+    }
     p.counter = 0; p.attackCd = w.cooldown[i] * p.attackSpeed; p.comboWindow = 1.25; this.attackBuffer = 0;
     this.emit('swing', { combo: p.combo, weapon: p.weapon, x: p.x, y: p.y, angle: p.facing });
   }
@@ -320,8 +398,12 @@ export class Game {
       if (distance(p, e) <= a.range + e.radius && Math.abs(angleDelta(direction, a.angle)) <= a.arc / 2) {
         a.hit.add(e.id);
         if (p.weapon === 'emberbrand' && !e.dummy) { e.burn = p.burnDuration; e.burnPower = p.burnDamage; }
-        this.hurtEnemy(e, a.damage, direction, p.weapon === 'pagebreaker' && a.combo === 3 ? 'heavy' : 'sword');
+        const momentum = p.momentumTime > 0 ? 1.3 : 1; p.momentumTime = 0;
+        this.hurtEnemy(e, a.damage * momentum, direction, p.weapon === 'pagebreaker' && a.combo === 3 ? 'heavy' : 'sword');
       }
+    }
+    for (const o of this.props) if (o.hp > 0 && !a.hit.has(o.id) && distance(p, o) < a.range + o.radius && Math.abs(angleDelta(Math.atan2(o.y - p.y, o.x - p.x), a.angle)) <= a.arc / 2) {
+      a.hit.add(o.id); this.hurtProp(o, a.damage);
     }
     if (p.faultline && a.combo === 3 && !a.wave && a.age > .12) {
       a.wave = true;
@@ -340,8 +422,16 @@ export class Game {
       e.flash = .16; this.lessonHits++;
       if (this.lessonHits >= 3) this.completeLesson();
     } else {
-      const shielded = e.type === 'warder' && ['approach', 'windup'].includes(e.state) && source === 'sword' && Math.abs(angleDelta(angle + Math.PI, e.facing)) < 1.25;
+      const hasShield = (e.type === 'warder' || e.type === 'knight' && e.stance === 'shield') && ['approach', 'windup'].includes(e.state);
+      const shielded = hasShield && source === 'sword' && Math.abs(angleDelta(angle + Math.PI, e.facing)) < 1.25;
       if (shielded) { damage *= .3; this.emit('float', { x: e.x, y: e.y - 64, text: 'SHIELDED', color: e.color }); }
+      if (hasShield && ['heavy', 'ability'].includes(source)) {
+        this.count('shieldBreaks'); e.state = 'recover'; e.stateTime = e.boss ? 1.1 : .7;
+        this.emit('float', { x: e.x, y: e.y - 64, text: 'SHIELD OPEN', color: '#9aefd9' });
+      }
+      if (source === 'ability') this.count('abilityHits');
+      const protectedByWeaver = e.type !== 'weaver' && this.enemies.some(w => w.type === 'weaver' && w.hp > 0 && w.spawn <= 0 && distance(w, e) < 165);
+      if (protectedByWeaver) damage *= .55;
       e.hp -= damage; e.flash = .15;
       if (!e.boss && e.state !== 'charge' && !shielded && ['sword', 'heavy', 'reflect'].includes(source)) {
         const heavy = this.weapon === 'pagebreaker';
@@ -351,7 +441,10 @@ export class Game {
         if (source === 'heavy') { e.state = 'recover'; e.stateTime = .7; }
       }
       if (e.hp <= 0) {
-        this.stats.kills++; this.addInk(e.ink); if (e.boss) this.stats.bosses++;
+        this.stats.kills++; this.addInk(e.ink); this.count('kills');
+        if (e.boss) { this.stats.bosses++; this.count('bosses'); }
+        else this.player.hp = Math.min(this.player.maxHp, this.player.hp + this.player.healKill);
+        if (e.burn > 0) this.count('burnKills');
         this.emit('kill', { x: e.x, y: e.y, color: e.color, boss: e.boss });
         if (e.burn > 0 && this.player.wildfire) {
           this.emit('burst', { x: e.x, y: e.y, radius: 105, color: '#ffad78' });
@@ -369,8 +462,9 @@ export class Game {
     if (blockable && p.guarding && Math.abs(angleDelta(toward, p.facing)) < 1.42) {
       const perfectWindow = this.mode === 'tutorial' ? .45 : .23;
       if (p.guardAge <= perfectWindow) {
-        p.guard = Math.min(100, p.guard + 22); p.counter = 2; p.invulnerable = .16;
+        p.guard = Math.min(p.maxGuard, p.guard + 22); p.counter = p.counterTime; p.invulnerable = .16;
         p.hp = Math.min(p.maxHp, p.hp + p.healParry); this.stats.parries++;
+        this.count('parries'); if (p.tempo) p.abilityCd = Math.max(0, p.abilityCd - 2);
         if (attacker && attacker.type !== 'spitter') { attacker.state = 'recover'; attacker.stateTime = 1.4; attacker.stun = 0; }
         this.emit('parry', { x: p.x, y: p.y });
         if (this.mode === 'tutorial' && this.lesson >= 3) this.completeLesson();
@@ -387,14 +481,56 @@ export class Game {
       this.emit('float', { x: p.x, y: p.y - 50, text: this.lesson === 4 ? 'Tap guard a little later' : 'Face the shot and hold guard', color: '#d7e0ea' });
       return 'practice';
     }
-    damage = Math.max(1, Math.round(damage * p.armor));
+    if (this.runMode === 'practice' && this.practiceOptions.invincible) { p.invulnerable = .3; this.emit('float', { x: p.x, y: p.y - 50, text: 'PRACTICE HIT', color: '#ffd088' }); return 'practice'; }
+    damage = Math.max(1, Math.round(damage * p.armor * (p.fortify > 0 ? .7 : 1)));
     const actualDamage = Math.min(p.hp, damage);
     p.hp = Math.max(0, p.hp - damage); p.flash = .25; p.invulnerable = .65; p.combo = 0;
     this.stats.damageTaken += actualDamage;
     this.lastHit = { source, damage, reason: !blockable ? 'Ink on the floor cannot be blocked. Move out of its warning circle or dash through it.' : p.broken > 0 ? 'Your guard was broken. Release it between attacks to recover.' : p.guarding ? 'The hit came around your guard. Face the attacker before blocking.' : 'Step out of the marked attack, dash through it, or face it and block.' };
     this.emit('hurt', { x: p.x, y: p.y, damage, source });
-    if (p.hp === 0) { this.deathSource = source; this.changeMode('death'); this.emit('death'); }
+    if (p.hp === 0) { this.deathSource = source; this.finishAttempt(false); this.changeMode('death'); this.emit('death'); }
     return 'hit';
+  }
+  useAbility() {
+    const p = this.player;
+    if (!['combat', 'tutorial'].includes(this.mode) || p.abilityCd > 0 || p.broken > 0 || p.dash > 0) return false;
+    p.abilityCd = p.abilityCooldown; p.attack = null; p.guarding = false;
+    const alternate = this.forms.ability === 'alternate';
+    if (p.weapon === 'scrapsteel') {
+      if (alternate) {
+        for (const q of this.projectiles) if (!q.friendly && distance(p, q) < 180) {
+          const owner = this.enemies.find(e => e.id === q.ownerId), a = owner ? Math.atan2(owner.y - q.y, owner.x - q.x) : Math.atan2(-q.vy, -q.vx);
+          Object.assign(q, { vx: Math.cos(a) * 480, vy: Math.sin(a) * 480, friendly: true, source: 'ability', damage: p.needle ? 54 : 36, life: 2, color: '#9aefd9' });
+        }
+        p.guard = Math.min(p.maxGuard, p.guard + 20); p.counter = p.counterTime; p.invulnerable = .2;
+        this.emit('burst', { x: p.x, y: p.y, radius: 180, color: '#9aefd9' });
+      } else {
+        p.skillRush = .24; p.skillHits.clear(); p.dash = .2; p.dashX = Math.cos(p.facing); p.dashY = Math.sin(p.facing); p.invulnerable = .26;
+      }
+    } else if (p.weapon === 'pagebreaker') {
+      if (alternate) for (let i = -1; i <= 1; i++) this.abilityShot(p.facing + i * .23, 22, 450, false, true);
+      else this.areaDamage(p.x, p.y, 155, 60, 'ability');
+      if (p.aftershock) this.bursts.push({ x: p.x, y: p.y, radius: 155, delay: .35, damage: 24 });
+      if (p.stonewall) { p.guard = Math.min(p.maxGuard, p.guard + 25); p.fortify = 1.5; }
+    } else {
+      const count = (alternate ? 8 : 5) + (p.firestorm ? 2 : 0);
+      for (let i = 0; i < count; i++) this.abilityShot(p.facing + (alternate ? i * TAU / count : (i - (count - 1) / 2) * .18), alternate ? 12 : 16, 390, true);
+    }
+    this.emit('ability', { x: p.x, y: p.y, weapon: p.weapon }); return true;
+  }
+  abilityShot(angle, damage, speed, burn = false, pierce = false) {
+    const p = this.player;
+    this.projectiles.push({ x: p.x, y: p.y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, radius: pierce ? 13 : 8, damage, burn, pierce, hits: new Set(), friendly: true, source: 'ability', life: 1.2, color: WEAPONS[p.weapon].color });
+  }
+  areaDamage(x, y, radius, damage, source) {
+    const center = { x, y }; this.emit('burst', { x, y, radius, color: '#ffd088' });
+    for (const e of this.enemies) if (e.hp > 0 && e.spawn <= 0 && distance(center, e) < radius + e.radius) this.hurtEnemy(e, damage, Math.atan2(e.y - y, e.x - x), source);
+    for (const o of this.props) if (o.hp > 0 && distance(center, o) < radius + o.radius) this.hurtProp(o, damage);
+  }
+  hurtProp(o, damage) {
+    if (o.hp <= 0) return;
+    o.hp = Math.max(0, o.hp - damage); this.emit('spark', { x: o.x, y: o.y, color: o.type === 'barrel' ? '#ffad78' : '#bfd1d7' });
+    if (o.hp === 0 && o.type === 'barrel') this.hazards.push({ x: o.x, y: o.y, radius: 115, warning: .65, life: .2, damage: 15, explosive: true, source: 'An exploding ink barrel' });
   }
   beginWindup(e, attack, duration, angle) {
     e.state = 'windup'; e.attack = attack; e.windup = duration; e.stateTime = duration;
@@ -448,13 +584,15 @@ export class Game {
         e.phase = phase; e.state = 'recover'; e.stateTime = 1.5;
         this.banner = e.type === 'queen'
           ? { title: 'No more corrections', text: 'More quills. More ink. Her recovery still leaves an opening.', time: 3 }
-          : { title: 'A rougher draft', text: 'The Brute is faster. Its recovery is still your opening.', time: 3 };
+          : e.type === 'brute' ? { title: 'A rougher draft', text: 'The Brute is faster. Its recovery is still your opening.', time: 3 }
+          : { title: 'The lines come alive', text: 'Watch for the second strike. Recovery is still your opening.', time: 3 };
         this.emit('bossPhase'); return;
       }
       if (!e.cooldown) {
-        const sequence = e.type === 'queen' ? ['quill', 'blots', 'orbit'] : ['charge', 'slam', 'fan'];
+        const sequence = e.type === 'queen' ? ['quill', 'blots', 'orbit'] : e.type === 'knight' ? ['thrust', 'doubleSlash', 'fan', 'slam'] : e.type === 'palimpsest' ? ['charge', 'blots', 'fan'] : ['charge', 'slam', 'fan'];
         const attack = sequence[e.pattern++ % sequence.length];
-        this.beginWindup(e, attack, e.type === 'queen' ? 1.2 : e.phase === 2 ? .85 : 1.1, angle); return;
+        e.stance = e.type === 'knight' ? (e.pattern % 2 ? 'shield' : 'sword') : null;
+        this.beginWindup(e, attack, e.type === 'queen' ? 1.2 : e.phase === 2 ? .95 : 1.2, angle); return;
       }
     } else if (!e.cooldown) {
       if (e.type === 'scrapper' && d < 78) { this.beginWindup(e, 'slash', .68, angle); return; }
@@ -462,10 +600,15 @@ export class Game {
       if (e.type === 'skitter' && d < 320) { this.beginWindup(e, 'charge', .78, angle); return; }
       if (e.type === 'spitter' && d < 550) { this.beginWindup(e, 'shot', .9, angle); return; }
       if (e.type === 'blotter' && d < 570) { this.beginWindup(e, 'blot', 1.25, angle); return; }
+      if (e.type === 'duelist' && d < 120) { this.beginWindup(e, 'doubleSlash', .9, angle); return; }
+      if (e.type === 'sniper' && d < 800) { this.beginWindup(e, 'snipe', 1.5, angle); return; }
+      if (e.type === 'weaver' && d < 480) { this.beginWindup(e, 'shot', 1.2, angle); return; }
+      if (e.type === 'summoner' && (e.summons || 0) < 2) { this.beginWindup(e, 'summon', 1.6, angle); return; }
+      if (e.type === 'summoner' && d < 480) { this.beginWindup(e, 'shot', 1.1, angle); return; }
     }
     e.facing = angle;
     let speed = e.speed;
-    if (e.type === 'spitter' || e.type === 'blotter') speed = d < 200 ? -e.speed : d > 320 ? e.speed : 0;
+    if (['spitter', 'blotter', 'sniper', 'weaver', 'summoner'].includes(e.type)) speed = d < 200 ? -e.speed : d > (e.type === 'sniper' ? 420 : 320) ? e.speed : 0;
     if (e.type === 'brute' && d < 160) speed = 0;
     let vx = Math.cos(angle) * speed, vy = Math.sin(angle) * speed;
     if (e.type === 'queen') {
@@ -478,7 +621,7 @@ export class Game {
       const sep = distance(e, other), limit = e.radius + other.radius + 16;
       if (sep < limit && sep > .01) { vx += (e.x - other.x) / sep * 95; vy += (e.y - other.y) / sep * 95; }
     }
-    for (const o of this.obstacles) {
+    for (const o of [...this.obstacles, ...this.props.filter(o => o.hp > 0)]) {
       const ox = e.x - o.x, oy = e.y - o.y, sep = Math.max(1, distance(e, o)), safe = o.radius + e.radius + 18;
       // Follow a tangent when cover blocks the approach, instead of repelling enemies away forever.
       if (sep < safe + 45 && ox * vx + oy * vy < 0) {
@@ -491,10 +634,10 @@ export class Game {
   }
   releaseAttack(e) {
     const p = this.player;
-    if (e.attack === 'charge') {
-      e.state = 'charge'; e.stateTime = e.type === 'brute' ? .68 : .38;
-      e.chargeSpeed = e.type === 'brute' ? (e.phase === 2 ? 610 : 510) : 540;
-      this.emit('charge', { boss: e.type === 'brute' }); return;
+    if (e.attack === 'charge' || e.attack === 'thrust') {
+      e.state = 'charge'; e.stateTime = e.type === 'brute' ? .68 : e.type === 'knight' ? .52 : .38;
+      e.chargeSpeed = e.type === 'brute' ? (e.phase === 2 ? 610 : 510) : e.type === 'knight' ? 550 : 540;
+      this.emit('charge', { boss: e.boss }); return;
     }
     e.state = 'recover'; e.stateTime = e.boss ? 1.65 : e.type === 'warder' ? 1.2 : .9;
     if (e.attack === 'slash' || e.attack === 'shieldSwing') {
@@ -502,6 +645,18 @@ export class Game {
       if (distance(e, p) < (e.attack === 'shieldSwing' ? 112 : 87) && Math.abs(angleDelta(Math.atan2(p.y - e.y, p.x - e.x), e.facing)) < 1.2) this.hurtPlayer(e.damage, e, e.name, e);
     }
     if (e.attack === 'shot') this.shoot(e, e.facing, 220);
+    if (e.attack === 'snipe') { this.shoot(e, e.facing, 500); e.stateTime = 1.6; }
+    if (e.attack === 'doubleSlash') {
+      this.emit('enemySwing', { x: e.x, y: e.y, angle: e.facing, color: e.color });
+      let result;
+      if (distance(e, p) < 135 && Math.abs(angleDelta(Math.atan2(p.y - e.y, p.x - e.x), e.facing)) < 1.25) result = this.hurtPlayer(e.damage, e, e.name, e);
+      if (result !== 'parried') this.beginWindup(e, 'thrust', e.phase === 2 ? .55 : .7, Math.atan2(p.y - e.y, p.x - e.x));
+    }
+    if (e.attack === 'summon') {
+      e.summons = (e.summons || 0) + 1;
+      const minion = this.spawn('scrapper', clamp(e.x + (e.summons % 2 ? 65 : -65), 90, 870), clamp(e.y + 50, 95, 505), 1.1);
+      minion.ink = 0; e.stateTime = 2.4; this.emit('inkDrop');
+    }
     if (e.attack === 'blot' || e.attack === 'blots') {
       for (const t of e.targets) this.hazards.push({ ...t, warning: 0, life: 3, damage: e.damage, source: `${e.name}’s ink pool`, ownerId: e.id });
       e.targets = []; this.emit('inkDrop');
@@ -531,9 +686,13 @@ export class Game {
     for (const q of this.projectiles) {
       q.x += q.vx * dt; q.y += q.vy * dt; q.life -= dt;
       if (this.obstacles.some(o => distance(q, o) < o.radius + q.radius)) { q.life = 0; this.emit('spark', { x: q.x, y: q.y, color: '#97a7bb' }); continue; }
+      const prop = this.props.find(o => o.hp > 0 && distance(q, o) < o.radius + q.radius);
+      if (prop) { this.hurtProp(prop, q.damage); q.life = 0; continue; }
       if (q.friendly) {
-        for (const e of this.enemies) if (e.hp > 0 && e.spawn <= 0 && !e.trainer && distance(q, e) < e.radius + q.radius) {
-          this.hurtEnemy(e, q.damage, Math.atan2(q.vy, q.vx), 'reflect'); q.life = 0; break;
+        for (const e of this.enemies) if (e.hp > 0 && e.spawn <= 0 && !e.trainer && !q.hits?.has(e.id) && distance(q, e) < e.radius + q.radius) {
+          if (q.burn) { e.burn = this.player.burnDuration; e.burnPower = this.player.burnDamage; }
+          this.hurtEnemy(e, q.damage, Math.atan2(q.vy, q.vx), q.source || 'reflect'); q.hits?.add(e.id);
+          if (!q.pierce) { q.life = 0; break; }
         }
       } else if (distance(q, this.player) < this.player.radius + q.radius) {
         const owner = this.enemies.find(e => e.id === q.ownerId);
@@ -548,6 +707,13 @@ export class Game {
     this.projectiles = this.projectiles.filter(q => q.life > 0 && q.x > 20 && q.y > 20 && q.x < 940 && q.y < 580);
   }
   updateHazards(dt) {
+    for (const b of this.bursts) { b.delay -= dt; if (b.delay <= 0) this.areaDamage(b.x, b.y, b.radius, b.damage, 'ability'); }
+    this.bursts = this.bursts.filter(b => b.delay > 0);
+    const sweepCycle = Math.floor(this.roomClock / 9);
+    if (this.sweepingInk && this.roomClock % 9 > 2 && sweepCycle !== this.sweepCycle) {
+      this.sweepCycle = sweepCycle;
+      this.hazards.push({ x: sweepCycle % 2 ? 860 : 100, y: 315, radius: 70, warning: 1.4, life: 4.4, damage: 12, vx: sweepCycle % 2 ? -170 : 170, source: 'The moving ink crease' });
+    }
     for (const pool of this.floorPools) {
       const phase = (this.roomClock + pool.offset) % 8, cycle = Math.floor((this.roomClock + pool.offset) / 8);
       if (phase >= 1 && pool.lastCycle !== cycle) {
@@ -558,7 +724,12 @@ export class Game {
     for (const h of this.hazards) {
       if (h.warning > 0) { h.warning = Math.max(0, h.warning - dt); continue; }
       h.life -= dt;
-      if (h.life > 0 && distance(h, this.player) < h.radius + this.player.radius * .5) this.hurtPlayer(h.damage, h, h.source, null, false);
+      if (h.vx) h.x += h.vx * dt;
+      if (h.explosive && !h.exploded) { h.exploded = true; this.areaDamage(h.x, h.y, h.radius, 60, 'barrel'); }
+      if (h.friendly) {
+        h.tick -= dt;
+        if (h.tick <= 0) { h.tick += .5; for (const e of this.enemies) if (e.hp > 0 && e.spawn <= 0 && distance(h, e) < h.radius + e.radius) this.hurtEnemy(e, h.damage, 0, 'fire'); }
+      } else if (h.life > 0 && distance(h, this.player) < h.radius + this.player.radius * .5) this.hurtPlayer(h.damage, h, h.source, null, false);
     }
     this.hazards = this.hazards.filter(h => h.life > 0);
   }
@@ -567,7 +738,7 @@ export class Game {
       r.previous = r.radius; r.radius += r.speed * dt;
       const d = distance(r, this.player);
       if (!r.hit && d + this.player.radius >= r.previous - 6 && d - this.player.radius <= r.radius + 6) {
-        r.hit = true; this.hurtPlayer(18, r, 'The Brute’s ink shockwave', r.owner);
+        r.hit = true; this.hurtPlayer(18, r, `${r.owner.name}’s ink shockwave`, r.owner);
       }
     }
     this.rings = this.rings.filter(r => r.radius < r.max);

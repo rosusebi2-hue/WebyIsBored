@@ -24,6 +24,8 @@ export class AudioEngine {
       hit: [100, .08, 'triangle', .065, 40], kill: [220, .16, 'triangle', .035, 90],
       dash: [460, .15, 'sine', .025, 95], block: [155, .12, 'square', .025, 90],
       parry: [740, .28, 'sine', .06, 1108], hurt: [90, .2, 'sawtooth', .04, 40],
+      ability: [e.weapon === 'pagebreaker' ? 90 : e.weapon === 'emberbrand' ? 650 : 380, .35, 'triangle', .06, e.weapon === 'pagebreaker' ? 35 : 180],
+      windup: [e.boss ? 210 : 340, .12, 'sine', .012, e.boss ? 320 : 410],
       inkDrop: [180, .25, 'sine', .025, 55],
       shoot: [330, .08, 'triangle', .018, 165], slam: [75, .3, 'triangle', .075, 27],
       clear: [523, .3, 'sine', .05, 784], lessonComplete: [587, .22, 'sine', .04, 880],

@@ -1,12 +1,17 @@
-import { VERSION, ROUTE, NODES, ENEMIES, WEAPONS, LESSONS, UPGRADES, SHOP_HEAL, giftPrice, clamp } from './config.js?v=2.1.0';
-import { SaveStore } from './storage.js?v=2.1.0';
-import { Game } from './engine.js?v=2.1.0';
-import { Renderer } from './renderer.js?v=2.1.0';
-import { Input } from './input.js?v=2.1.0';
-import { AudioEngine } from './audio.js?v=2.1.0';
+import { VERSION, NODES, ENEMIES, WEAPONS, LESSONS, UPGRADES, SHOP_HEAL, EVENTS, ABILITIES, FINISHERS, MASTERIES, SYNERGIES, JOURNAL, DEFAULT_BINDINGS, unlocked, giftPrice, clamp } from './config.js?v=2.2.0';
+import { SaveStore } from './storage.js?v=2.2.0';
+import { Game } from './engine.js?v=2.2.0';
+import { Renderer } from './renderer.js?v=2.2.0';
+import { Input, keyLabel } from './input.js?v=2.2.0';
+import { AudioEngine } from './audio.js?v=2.2.0';
 
+import { buildReport } from './report.js?v=2.2.0';
+const t = (value, params) => globalThis.WebyI18n?.t(value, params) || String(value).replace(/\{(\w+)\}/g, (_, key) => params?.[key] ?? `{${key}}`);
+const errors = [];
+window.addEventListener('error', e => errors.push(String(e.message).slice(0, 300)));
+window.addEventListener('unhandledrejection', e => errors.push(String(e.reason?.message || e.reason).slice(0, 300)));
 const $ = id => document.getElementById(id);
-const text = (tag, content, className) => { const e = document.createElement(tag); e.textContent = content; if (className) e.className = className; return e; };
+const text = (tag, content, className) => { const e = document.createElement(tag); if (globalThis.WebyI18n) WebyI18n.setText(e, content); else e.textContent = t(content); if (className) e.className = className; return e; };
 const timeLabel = value => `${Math.floor(value / 60)}:${String(Math.floor(value % 60)).padStart(2, '0')}`;
 let storage;
 try { storage = window.localStorage; } catch { storage = null; }
@@ -19,14 +24,14 @@ const dialog = $('game-dialog');
 const inner = $('dialog-inner');
 let renderer, input, toastTime = 0, feedbackTime = 0, dialogView = '', lastFocus = null;
 
-function showToast(message, duration = 3) { $('toast').textContent = message; $('toast').hidden = false; toastTime = duration; }
+function showToast(message, duration = 3) { $('toast').textContent = t(message); $('toast').hidden = false; toastTime = duration; }
 function button(label, action, className = 'secondary') {
   const b = text('button', label, className); b.type = 'button';
   b.addEventListener('click', () => { audio.unlock(); action(); processEvents(); }); return b;
 }
 function openDialog(view, eyebrow, title, copy, wide = false) {
   dialogView = view; dialog.dataset.view = view;
-  inner.replaceChildren(); inner.className = wide ? 'dialog-inner wide' : 'dialog-inner';
+  inner.replaceChildren(); if (globalThis.WebyI18n) inner.append(WebyI18n.makeSelector()); inner.className = wide ? 'dialog-inner wide' : 'dialog-inner';
   inner.append(text('p', eyebrow, 'dialog-eyebrow'));
   const h = text('h2', title); h.id = 'dialog-title'; inner.append(h);
   if (copy) inner.append(text('p', copy, 'dialog-copy'));
@@ -42,32 +47,38 @@ function closeDialog() {
 function actions(...buttons) { const e = text('div', '', 'menu-actions'); e.append(...buttons); inner.append(e); }
 function subactions(...elements) { const e = text('div', '', 'sub-actions'); e.append(...elements); inner.append(e); }
 function link(label, href) { const a = text('a', label); a.href = href; return a; }
-function launch(practice = false, confirmed = false) {
+function launch(practice = false, confirmed = false, mode = 'adventure') {
   if (!confirmed && (store.loadRun() || game.checkpoint)) {
     openDialog('confirm', 'A FRESH PAGE', 'Start over?', 'This replaces your current adventure checkpoint. Your settings and past clears stay saved.');
-    actions(button('Choose a weapon', () => launch(practice, true), 'primary'), button('Go back', showMode)); return;
+    actions(button('Choose a weapon', () => launch(practice, true, mode), 'primary'), button('Go back', showMode)); return;
   }
-  openDialog('weapons', 'YOUR FIRST CHOICE', 'How will you make your mark?', 'All three weapons are ready to use. Gifts you find along the route can develop their strengths.', true);
+  openDialog('weapons', 'YOUR FIRST CHOICE', 'How will you make your mark?', 'All three weapons are ready. Workshop choices apply when you start a new run.', true);
   const grid = text('div', '', 'upgrade-grid weapon-grid');
   for (const [id, w] of Object.entries(WEAPONS)) {
-    const card = button('', () => { closeDialog(); game.startNew(practice || !store.profile().tutorialDone, Date.now() >>> 0, id); }, 'upgrade-card weapon-card');
+    const card = button('', () => { closeDialog(); game.startNew(mode === 'adventure' && (practice || !store.profile().tutorialDone), Date.now() >>> 0, id, mode); }, 'upgrade-card weapon-card');
     card.style.setProperty('--weapon-color', w.color);
     card.append(text('span', w.icon, 'upgrade-icon'), text('span', w.tag, 'upgrade-tag'), text('strong', w.name), text('p', w.description), text('small', w.detail, 'weapon-detail'), text('span', 'Take this weapon →', 'upgrade-pick'));
+    const form = store.profile().loadouts[id].ability, ability = ABILITIES[id]; card.append(text('small', form === 'alternate' ? ability.alternateDescription : ability.description, 'weapon-detail'));
     grid.append(card);
   }
   inner.append(grid); subactions(button('Go back', showMode, ''));
 }
 function showTitle() {
-  const save = store.loadRun() || game.checkpoint, profile = store.profile();
-  openDialog('title', `THE ADVENTURE UPDATE · ${VERSION}`, 'An unfinished world.\nA story of your own.', 'You are Line, a drawing the Artist left behind. Choose your blade, follow the ink, and take on the Queen who wants to redraw it all.');
+  const save = store.loadRun(), profile = store.profile();
+  openDialog('title', `THE LIVING SKETCHBOOK · ${VERSION}`, 'An unfinished world.\nA story of your own.', 'You are Line, a drawing the Artist left behind. Cross three chapters, find the forgotten drawings, and decide how your story is written.');
   const quote = text('p', '“You don’t have to be finished to matter.”', 'dialog-quote'); quote.append(text('span', '— THE MARGIN')); inner.append(quote);
   if (save) actions(button(`Continue · ${save.room < 0 ? 'Choose your route' : NODES[save.node].title}`, () => { closeDialog(); game.restore(save); }, 'primary'), button('New adventure', () => launch()));
   else actions(button('Choose your weapon →', () => launch(), 'primary'));
-  subactions(button('Practice controls', () => launch(true), ''), button('Settings', showSettings, ''), link('What’s new ↗', '../../news/#stick-and-swing-2-1'));
+  const modes = text('div', '', 'mode-grid');
+  for (const [name, copy, action] of [['Boss Rush', 'Three bosses. One prepared build. Beat your own time.', () => launch(false, false, 'rush')], ['Workshop', 'Master your weapons. Choose alternate moves and looks.', () => showWorkshop()], ['Practice arena', 'Choose an enemy and learn at your own pace.', showPractice], ['Journal', 'Discover drawings, weaknesses, and forgotten stories.', showJournal]]) {
+    const card = button('', action, 'mode-card'); card.append(text('strong', name), text('small', copy)); modes.append(card);
+  }
+  inner.append(modes);
+  subactions(button('Learn the controls', () => launch(true), ''), button('Recent runs', showHistory, ''), button('Settings', showSettings, ''), link('What’s new ↗', '../../news/#stick-and-swing-2-2'));
   const meta = text('div', '', 'run-meta');
-  meta.append(text('span', '3 weapons'), text('span', '8 stops · 2 chapters · 2 bosses'));
-  if (profile.adventureBest) meta.append(text('span', `Best adventure ${timeLabel(profile.adventureBest)}`));
-  if (profile.adventureWins) meta.append(text('span', `${profile.adventureWins} adventures cleared`));
+  meta.append(text('span', '3 weapons'), text('span', '12 stops · 3 chapters · 3 bosses'));
+  if (profile.bookBest) meta.append(text('span', `Best adventure ${timeLabel(profile.bookBest)}`));
+  if (profile.bookWins) meta.append(text('span', `${profile.bookWins} adventures cleared`));
   else if (profile.wins) meta.append(text('span', `${profile.wins} First Page clears kept`));
   inner.append(meta);
 }
@@ -77,20 +88,20 @@ function wallet() {
   inner.append(row);
 }
 function routeMap() {
-  const map = text('ol', '', 'route-map'); map.setAttribute('aria-label', 'Your eight-stop adventure');
-  ROUTE.forEach((options, i) => {
+  const map = text('ol', '', 'route-map'); map.setAttribute('aria-label', 'Your adventure route');
+  game.route.forEach((options, i) => {
     const id = game.path[i], next = i === game.room + 1;
-    const cell = text('li', '', `map-stop ${id ? 'visited' : ''} ${next ? 'next' : ''} ${i === 3 || i === 7 ? 'map-boss' : ''}`);
+    const cell = text('li', '', `map-stop ${id ? 'visited' : ''} ${next ? 'next' : ''} ${options.length === 1 && NODES[options[0]].kind === 'boss' ? 'map-boss' : ''}`);
     if (next) cell.setAttribute('aria-current', 'step');
-    cell.append(text('span', `${String(i + 1).padStart(2, '0')} · ${i < 4 ? 'PAGE I' : 'PAGE II'}`, 'map-number'));
-    cell.append(text('strong', id ? NODES[id].title : options.length === 1 ? NODES[options[0]].title : i === 2 || i === 6 ? 'Shop or recovery' : 'Battle or challenge'));
+    cell.append(text('span', `${String(i + 1).padStart(2, '0')} · ${game.runMode === 'rush' ? 'BOSS' : i < 4 ? 'PAGE I' : i < 8 ? 'PAGE II' : 'PAGE III'}`, 'map-number'));
+    cell.append(text('strong', id ? NODES[id].title : options.length === 1 ? NODES[options[0]].title : i === 2 || i === 6 || i === 10 ? 'Shop or recovery' : 'Battle or challenge'));
     cell.append(text('small', next ? 'Choose this stop' : id ? 'Your path' : 'Ahead'));
     map.append(cell);
   });
   return map;
 }
 function showRoute() {
-  openDialog('route', `STOP ${game.room + 2} / ${ROUTE.length} · ${game.room + 1 < 4 ? 'THE FIRST PAGE' : 'THE SECOND PAGE'}`, game.routeOptions().length > 1 ? 'Choose your next mark.' : game.room < 0 ? 'Your adventure starts here.' : 'Turn the page.', NODES[game.node]?.outro || 'Every route moves you forward. Ink buys gifts at Nib’s shop; recovery stops restore health for free.', true);
+  openDialog('route', `STOP ${game.room + 2} / ${game.route.length} · ${game.runMode === 'rush' ? 'BOSS RUSH' : game.room + 1 < 4 ? 'THE FIRST PAGE' : game.room + 1 < 8 ? 'THE SECOND PAGE' : 'THE TORN BINDING'}`, game.routeOptions().length > 1 ? 'Choose your next mark.' : game.room < 0 ? 'Your adventure starts here.' : 'Turn the page.', (game.runMode === 'rush' ? 'Start with stronger hits, extra health, and a faster dash. Between bosses, choose a gift and recover all health.' : NODES[game.node]?.outro) || 'Every route moves you forward. Ink buys gifts at Nib’s shop; recovery stops restore health for free.', true);
   wallet();
   const grid = text('div', '', `route-choices ${game.routeOptions().length === 1 ? 'single' : ''}`);
   const labels = { combat: 'BATTLE', elite: 'HARDER BATTLE · MORE INK', shop: 'SHOP', rest: 'RECOVERY', boss: 'BOSS' };
@@ -99,13 +110,13 @@ function showRoute() {
     card.append(text('span', labels[n.kind], 'upgrade-tag'), text('strong', n.title), text('p', n.note));
     if (n.waves) {
       const ink = n.reward + n.waves.flat().reduce((sum, type) => sum + ENEMIES[type].ink, 0);
-      card.append(text('small', `${n.waves.length} ${n.waves.length === 1 ? 'wave' : 'waves'} · ${ink} ink${id === 'queen' ? '' : ' · a gift + 16 health'}`, 'route-reward'));
+      card.append(text('small', `${n.waves.length} ${n.waves.length === 1 ? 'wave' : 'waves'} · ${ink} ink${id === 'knight' ? '' : game.runMode === 'rush' ? ' · a gift + full health' : ' · a gift + 16 health'}`, 'route-reward'));
     }
     card.append(text('span', 'Take this route →', 'upgrade-pick')); grid.append(card);
   }
   inner.append(grid);
   const overview = text('details', '', 'route-overview'); overview.open = matchMedia('(min-width: 761px)').matches;
-  overview.append(text('summary', 'Your full eight-stop route'), routeMap()); inner.append(overview);
+  overview.append(text('summary', 'Your full route'), routeMap()); inner.append(overview);
   subactions(button(`Your build · ${game.upgrades.length} gifts`, showBuild, ''), button('Save & title', () => game.title(), ''), link('Back to the arcade', '../../'));
 }
 function showShop() {
@@ -132,7 +143,89 @@ function showBuild() {
   }
   if (game.upgrades.length) inner.append(list);
   else inner.append(text('p', 'Clear a battle to choose your first gift.', 'build-list'));
+  const ability = ABILITIES[game.weapon];
+  inner.append(text('h3', game.forms.ability === 'alternate' ? ability.alternate : ability.name), text('p', game.forms.ability === 'alternate' ? ability.alternateDescription : ability.description, 'build-list'));
+  for (const combo of SYNERGIES.filter(s => s.ids.every(id => game.upgrades.includes(id)))) {
+    const row = text('div', '', 'synergy'); row.append(text('strong', combo.title), text('p', combo.text)); inner.append(row);
+  }
   actions(button('Back', showMode, 'primary'));
+}
+function selectField(name, values, selected, change) {
+  const label = text('label', '', 'select-setting'), select = document.createElement('select');
+  label.append(text('span', name));
+  for (const [value, title, disabled = false] of values) {
+    const option = text('option', title); option.value = value; option.disabled = disabled; option.selected = value === String(selected); select.append(option);
+  }
+  select.value = String(selected); select.addEventListener('change', () => change(select.value)); label.append(select); return label;
+}
+function showWorkshop(weapon = 'scrapsteel') {
+  const profile = store.profile(), loadout = profile.loadouts[weapon];
+  openDialog('workshop', 'THE WORKSHOP', 'Make the blade your own.', 'Mastery carries across adventures and Boss Rush. Training gives no mastery. New choices apply to your next run.', true);
+  inner.append(selectField('Weapon', Object.entries(WEAPONS).map(([id, w]) => [id, w.name]), weapon, showWorkshop));
+  const grid = text('div', '', 'mastery-grid');
+  for (const task of MASTERIES[weapon]) {
+    const card = text('div', '', 'mastery-card'), count = profile.mastery[weapon][task.metric], done = count >= task.goal;
+    const reward = task.unlock === 'finisher' ? FINISHERS[weapon].name : task.unlock === 'ability' ? ABILITIES[weapon].alternate : 'Master’s scarf';
+    card.append(text('span', done ? 'UNLOCKED' : 'MASTERY CHALLENGE', 'upgrade-tag'), text('strong', task.label), text('p', `${Math.min(count, task.goal)} / ${task.goal}`), text('small', t('Reward: {0}', { 0: t(reward) })));
+    const progress = document.createElement('progress'); progress.max = task.goal; progress.value = Math.min(count, task.goal); progress.setAttribute('aria-label', t(task.label)); card.append(progress); grid.append(card);
+  }
+  inner.append(grid);
+  for (const [part, name, base, alternate, description] of [
+    ['finisher', 'Third strike', 'Original combo', FINISHERS[weapon].name, FINISHERS[weapon].description],
+    ['ability', 'Active ability', ABILITIES[weapon].name, ABILITIES[weapon].alternate, ABILITIES[weapon].alternateDescription],
+    ['appearance', 'Appearance', 'Classic scarf', 'Master’s scarf', 'A bright scarf and warm paper finish. A cosmetic reward with no stat bonus.'],
+  ]) {
+    const isOpen = unlocked(profile, weapon, part), original = part === 'appearance' ? 'classic' : 'standard', alt = part === 'appearance' ? 'master' : 'alternate';
+    inner.append(selectField(name, [[original, base], [alt, isOpen ? alternate : t('{0} · locked', { 0: t(alternate) }), !isOpen]], loadout[part], value => {
+      const current = store.profile(); current.loadouts[weapon][part] = value; store.saveProfile(current); showToast('Workshop choice saved for your next run.');
+    }), text('p', description, 'field-note'));
+  }
+  actions(button('Back', showMode, 'primary'));
+}
+function showPractice() {
+  openDialog('practice', 'LEARN AT YOUR OWN PACE', 'The practice page.', 'Choose any enemy or boss phase. Your adventure checkpoint stays saved. Practice gives no ink, records, or mastery.', true);
+  const options = { enemy: 'scrapper', weapon: game.weapon, phase: 1, invincible: true, ranges: true };
+  inner.append(selectField('Weapon', Object.entries(WEAPONS).map(([id, w]) => [id, w.name]), options.weapon, value => options.weapon = value));
+  inner.append(selectField('Opponent', Object.entries(ENEMIES).map(([id, e]) => [id, e.name]), options.enemy, value => options.enemy = value));
+  inner.append(selectField('Boss phase', [['1', 'Phase I'], ['2', 'Phase II']], '1', value => options.phase = Number(value)));
+  for (const [key, name] of [['invincible', 'Invincibility'], ['ranges', 'Show attack ranges']]) {
+    const label = text('label', '', 'setting'), checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.checked = true;
+    checkbox.addEventListener('change', () => options[key] = checkbox.checked); label.append(text('span', name), checkbox); inner.append(label);
+  }
+  actions(button('Enter practice →', () => { closeDialog(); game.startPractice(options); }, 'primary'), button('Back', showMode));
+}
+function showJournal() {
+  const profile = store.profile();
+  openDialog('journal', 'THE DRAWINGS WE MEET', 'Your sketchbook journal.', 'Meet drawings in an adventure or Boss Rush to keep their notes here. Rescued drawings stay with you.', true);
+  const grid = text('div', '', 'journal-grid');
+  for (const [id, entry] of Object.entries(JOURNAL)) {
+    const discovered = profile.discovered.includes(id), card = text('article', '', 'journal-card');
+    card.append(text('h3', discovered ? ENEMIES[id].name : 'An undiscovered drawing'), text('p', discovered ? entry : 'Keep exploring to reveal this page.')); grid.append(card);
+  }
+  inner.append(grid, text('h3', 'Forgotten drawings'));
+  inner.append(text('p', profile.rescued.includes('rescue') ? 'The rain sketch is safe. Nib gave it a dry corner of the book.' : 'A little drawing is still waiting for shelter.', 'build-list'));
+  inner.append(text('p', profile.rescued.includes('echo') ? 'The answering drawing has a voice again. It knows someone is reading.' : 'Somewhere between the pages, a quiet voice is waiting.', 'build-list'));
+  actions(button('Back', showMode, 'primary'));
+}
+function showHistory() {
+  openDialog('history', 'YOUR RECENT PAGES', 'Every attempt leaves a mark.', 'The last ten finished attempts are kept on this browser and device. Combat time includes retries; menus are excluded.', true);
+  const profile = store.profile(), records = store.history();
+  for (const [id, w] of Object.entries(WEAPONS)) inner.append(text('p', t('Boss Rush · {0}: {1}', { 0: w.name, 1: profile.rushBest[id] ? timeLabel(profile.rushBest[id]) : t('No clear yet') }), 'build-list'));
+  if (!records.length) inner.append(text('p', 'Finish an adventure attempt or Boss Rush to start your history.', 'build-list'));
+  for (const r of records) {
+    const row = text('article', '', 'history-row');
+    row.append(text('strong', `${r.result === 'victory' ? 'Victory' : 'Defeat'} · ${WEAPONS[r.weapon].name}`), text('p', t('{0} · {1} · stop {2}', { 0: t(r.mode === 'rush' ? 'Boss Rush' : 'Adventure'), 1: timeLabel(r.time), 2: r.stop })), text('small', t('Seed {0} · {1}', { 0: r.seed, 1: r.date.slice(0, 10) })));
+    const details = text('details', ''); details.append(text('summary', 'Route and build'), text('p', r.path.map(id => t(NODES[id].title)).join(' → ')), text('p', r.build.map(id => t(UPGRADES.find(u => u.id === id).name)).join(' · ') || 'No gifts')); row.append(details); inner.append(row);
+  }
+  actions(button('Back', showMode, 'primary')); subactions(button('Copy a bug report', showReport, ''));
+}
+function showReport() {
+  openDialog('report', 'HELP IMPROVE THE GAME', 'A useful bug report.', 'Copy these details and add what happened. Nothing is sent automatically. You can share the report when you contact us.', true);
+  const report = document.createElement('textarea'); report.value = buildReport(game, settings, errors); report.readOnly = true; report.rows = 12; report.className = 'report-text'; report.setAttribute('aria-label', t('Bug report details')); report.dataset.noI18n = ''; inner.append(report);
+  actions(button('Copy report', async () => {
+    try { await navigator.clipboard.writeText(report.value); showToast('Report copied. Add the steps that caused the problem.'); }
+    catch { report.focus(); report.select(); showToast('Select and copy the report from this box.'); }
+  }, 'primary'), button('Back', showMode));
 }
 function showMode() {
   input?.clear();
@@ -145,6 +238,20 @@ function showMode() {
     actions(button('Continue →', () => { closeDialog(); game.beginEncounter(); }, 'primary'));
     subactions(button('Save & title', () => game.title(), ''));
   } else if (game.mode === 'shop') showShop();
+  else if (game.mode === 'event') {
+    const event = EVENTS.find(e => e.id === game.eventId);
+    openDialog('event', 'BETWEEN THE LINES', event.title, event.text, true); wallet();
+    const choices = text('div', '', 'event-choices');
+    for (const c of event.choices) {
+      const choice = button(c.label, () => { if (game.chooseEvent(c.id)) closeDialog(); }, 'event-choice');
+      choice.disabled = game.ink + (c.ink || 0) < 0 || game.player.hp <= (c.hurt || 0); choices.append(choice);
+    }
+    inner.append(choices); subactions(button('Save & title', () => game.title(), ''));
+  } else if (game.mode === 'practiceResult') {
+    openDialog('practiceResult', 'PRACTICE COMPLETE', 'One more page?', 'Try another approach or return to your adventure. Practice has not changed your saved progress.');
+    actions(button('Practice again', () => { closeDialog(); game.startPractice(game.practiceOptions); }, 'primary'), button('Choose another opponent', showPractice));
+    subactions(button('Title screen', () => game.title(), ''));
+  }
   else if (game.mode === 'rest') {
     openDialog('rest', 'A QUIET MOMENT · THE MARGIN', 'Leave some space.', '“Even a good drawing needs a little blank space.” The ink settles. You can breathe again.');
     wallet();
@@ -154,10 +261,10 @@ function showMode() {
   } else if (game.mode === 'paused') {
     openDialog('paused', 'TAKE A BREATH', 'The page can wait.', 'Your run is paused. Return when you’re ready.');
     actions(button('Back to the fight →', () => { closeDialog(); game.resume(); }, 'primary'), button('Settings & controls', showSettings));
-    subactions(button('Your build', showBuild, ''), button('New adventure', () => launch(), ''), button('Title screen', () => game.title(), ''), link('Back to the arcade', '../../'));
+    subactions(button('Your build', showBuild, ''), button('Copy a bug report', showReport, ''), button('Title screen', () => game.title(), ''), link('Back to the arcade', '../../'));
     inner.append(text('p', 'Continue restores the encounter’s entrance. Route choices, gifts, and shop purchases save immediately on this browser and device.', 'build-list'));
   } else if (game.mode === 'reward') {
-    openDialog('reward', `${NODES[game.node].title.toUpperCase()} · CLEARED`, 'Make your next mark.', 'Choose one gift for this adventure. You’ll also recover 16 health. Your ink is already collected.', true);
+    openDialog('reward', `${game.currentNode.title} · CLEARED`, 'Make your next mark.', game.runMode === 'rush' ? 'Choose a gift to prepare for the next boss. All health will be restored.' : 'Choose one gift for this adventure. You’ll also recover 16 health. Your ink is already collected.', true);
     wallet(); const grid = text('div', '', 'upgrade-grid');
     for (const id of game.choices) {
       const u = UPGRADES.find(x => x.id === id);
@@ -169,15 +276,15 @@ function showMode() {
     subactions(button('See your build', showBuild, ''), button('Save & title', () => game.title(), ''));
   } else if (game.mode === 'death') {
     openDialog('death', 'A ROUGH DRAFT', 'Not your last line.', `${game.deathSource} caught you. Retry from this encounter’s entrance with the same build, ink, health, and enemies.`);
-    inner.append(text('p', game.lastHit?.reason || NODES[game.node].note, 'dialog-quote')); stats();
+    inner.append(text('p', game.lastHit?.reason || game.currentNode.note, 'dialog-quote')); stats();
     actions(button('Retry this encounter →', () => { closeDialog(); game.retryRoom(); }, 'primary'), button('New adventure', () => launch()));
-    subactions(button('See your build', showBuild, ''), link('Back to the arcade', '../../'));
+    subactions(button('See your build', showBuild, ''), button('Copy a bug report', showReport, ''), button('Title screen', () => game.title(), ''), link('Back to the arcade', '../../'));
   } else if (game.mode === 'victory') {
-    openDialog('victory', 'TWO PAGES COMPLETE', 'One version is enough.', 'The Queen’s crown falls into the ink. For a moment she is just another unfinished drawing. Line offers a hand. The Margin turns the page.');
+    openDialog('victory', game.runMode === 'rush' ? 'BOSS RUSH COMPLETE' : 'THREE CHAPTERS COMPLETE', 'Room for every drawing.', game.runMode === 'rush' ? 'The Brute, the Queen, and the Knight have fallen. Your time is saved for this weapon.' : 'The Knight sets down his sword. Together, the drawings take the weight of the binding. The book holds. There is room for everyone, even the unfinished.');
     inner.append(text('p', '“Perhaps the Artist didn’t leave us an ending. Perhaps they left us room.” — Nib', 'dialog-quote'));
     stats(); inner.append(text('p', `${WEAPONS[game.weapon].name} · ${game.upgrades.map(id => UPGRADES.find(u => u.id === id).name).join(' · ') || 'No gifts'}`, 'build-list'));
     actions(button('Draw another adventure →', () => launch(false, true), 'primary'));
-    subactions(button('Your build', showBuild, ''), link('Back to the arcade', '../../'), link('Release notes ↗', '../../news/#stick-and-swing-2-1'));
+    subactions(button('Your build', showBuild, ''), button('Title screen', () => game.title(), ''), link('Back to the arcade', '../../'), link('Release notes ↗', '../../news/#stick-and-swing-2-2'));
   } else closeDialog();
   $('pause-button').disabled = !['combat', 'tutorial'].includes(game.mode);
   $('build-button').disabled = ['title', 'tutorial'].includes(game.mode);
@@ -192,7 +299,7 @@ function stats() {
   inner.append(grid);
 }
 function showSettings() {
-  openDialog('settings', 'MAKE YOURSELF AT HOME', 'Settings & controls', 'Use the mouse to aim, or attack with Space for automatic targeting.');
+  openDialog('settings', 'MAKE YOURSELF AT HOME', 'Settings & controls', 'Use the mouse to aim, or use the keyboard for automatic targeting.', true);
   const list = text('div', '', 'settings-list');
   for (const [key, name, description] of [
     ['sound', 'Sound effects', 'Hits, blocks, and enemy warnings.'],
@@ -206,29 +313,50 @@ function showSettings() {
     label.append(words, checkbox); list.append(label);
   }
   inner.append(list);
+  inner.append(text('h3', 'Keyboard bindings'));
+  const bindingGrid = text('div', '', 'binding-grid'), keys = ['Space', 'ShiftLeft', 'ShiftRight', 'Escape', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map(k => `Key${k}`), ...'0123456789'.split('').map(k => `Digit${k}`), 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
+  const names = { up: 'Move up', down: 'Move down', left: 'Move left', right: 'Move right', attack: 'Swing', guard: 'Guard', dash: 'Dash', ability: 'Ability', pause: 'Pause' };
+  for (const [action, name] of Object.entries(names)) bindingGrid.append(selectField(name, keys.map(k => [k, keyLabel(k)]), settings.bindings[action], value => {
+    const occupied = Object.keys(settings.bindings).find(key => key !== action && settings.bindings[key] === value);
+    if (occupied) settings.bindings[occupied] = settings.bindings[action];
+    settings.bindings[action] = value; store.saveSettings(settings); input.clear(); applySettings(); showSettings();
+  }));
+  inner.append(bindingGrid);
+  subactions(button('Reset keyboard bindings', () => { settings.bindings = { ...DEFAULT_BINDINGS }; store.saveSettings(settings); applySettings(); showSettings(); }, ''));
+  inner.append(selectField('Touch button side', [['right', 'Right'], ['left', 'Left']], settings.touchSide, value => { settings.touchSide = value; store.saveSettings(settings); applySettings(); }));
+  inner.append(selectField('Touch control size', [['0.85', 'Compact'], ['1', 'Standard'], ['1.2', 'Large']], settings.touchScale, value => { settings.touchScale = Number(value); store.saveSettings(settings); applySettings(); }));
   const controls = text('dl', '', 'controls-grid');
-  for (const [name, keys] of [['Move', 'WASD / arrow keys'], ['Aim', 'Mouse / automatic with Space'], ['Swing', 'Left click / Space'], ['Guard / perfect block', 'Hold / tap right click or F'], ['Dash', 'Shift'], ['Pause', 'Escape']]) {
+  for (const [name, keys] of [['Move', 'Left stick'], ['Aim', 'Right stick / automatic'], ['Swing', 'X / Square'], ['Guard / perfect block', 'RT / R2'], ['Dash', 'A / Cross'], ['Ability', 'Y / Triangle'], ['Pause', 'Start / Options']]) {
     const item = text('div', ''); item.append(text('dt', name), text('dd', keys)); controls.append(item);
   }
-  inner.append(controls);
-  inner.append(text('p', 'Touch: drag the left stick to move; hold Swing or Guard and tap Dash on the right. Touch aiming selects the nearest enemy. While guarding, aim assist faces a nearby incoming shot. Guard takes priority over holding Swing.', 'build-list'));
+  inner.append(text('h3', 'Controller'), controls);
+  inner.append(text('p', 'Connect a standard controller and press a button. In menus, use the D-pad to move and A / Cross to choose. Press A / Cross on a dropdown to cycle its options.', 'build-list'));
+  inner.append(text('p', 'Touch: drag the stick to move. Hold Swing or Guard; tap Dash or Ability. Aiming follows the nearest enemy. Guard turns toward nearby incoming shots and takes priority over Swing.', 'build-list'));
   actions(button('Back', showMode, 'primary'));
 }
 function applySettings() {
   document.body.classList.toggle('reduce-effects', settings.reduced);
-  $('sound-button').textContent = settings.sound ? 'Sound on' : 'Sound off';
-  $('sound-button').setAttribute('aria-label', settings.sound ? 'Mute sound' : 'Enable sound');
+  $('sound-button').textContent = t(settings.sound ? 'Sound on' : 'Sound off');
+  $('sound-button').setAttribute('aria-label', t(settings.sound ? 'Mute sound' : 'Enable sound'));
   $('sound-button').setAttribute('aria-pressed', String(!settings.sound));
+  document.body.classList.toggle('touch-left', settings.touchSide === 'left');
+  $('touch-controls').style.setProperty('--touch-scale', settings.touchScale);
+  const hints = $('keyboard-hints'); hints.replaceChildren();
+  for (const [name, keys] of [['Move', [settings.bindings.up, settings.bindings.left, settings.bindings.down, settings.bindings.right].map(keyLabel).join(' / ')], ['Swing', keyLabel(settings.bindings.attack)], ['Guard', keyLabel(settings.bindings.guard)], ['Dash', keyLabel(settings.bindings.dash)], ['Ability', keyLabel(settings.bindings.ability)]]) {
+    const item = text('span', ''); item.append(text('kbd', keys), text('span', name)); hints.append(item);
+  }
+  $('arena').setAttribute('aria-label', t('Game arena. Controls can be changed in Settings.'));
 }
 function lessonUI() {
   const l = LESSONS[game.lesson]; if (!l) return;
-  $('lesson-count').textContent = `LESSON ${game.lesson + 1} / 5`;
-  $('lesson-title').textContent = l.title; $('lesson-text').textContent = l.text;
+  $('lesson-count').textContent = t(`LESSON ${game.lesson + 1} / 5`);
+  $('lesson-title').textContent = t(l.title); $('lesson-text').textContent = t(l.text);
   let hint = l.hint;
   if (matchMedia('(pointer: coarse)').matches) {
-    hint = ['Drag the left stick.', 'Hold Swing. Your aim follows the nearest enemy.', 'Move with the left stick, then tap Dash.', 'Hold Guard on the right.', 'Let go of Guard between shots. Tap again when the shot is close.'][game.lesson];
+    hint = ['Drag the movement stick.', 'Hold Swing. Your aim follows the nearest enemy.', 'Move with the stick, then tap Dash.', 'Hold Guard.', 'Let go of Guard between shots. Tap again when the shot is close.'][game.lesson];
   }
-  $('lesson-hint').textContent = hint;
+  if (!matchMedia('(pointer: coarse)').matches) hint = game.lesson === 0 ? t('Move with {0}.', { 0: [settings.bindings.up, settings.bindings.left, settings.bindings.down, settings.bindings.right].map(keyLabel).join(' / ') }) : game.lesson === 1 ? t('Hold {0} to swing. Mouse aims; keyboard selects a target.', { 0: keyLabel(settings.bindings.attack) }) : game.lesson === 2 ? t('Move toward the circle and press {0}.', { 0: keyLabel(settings.bindings.dash) }) : t('Hold or tap {0} to guard. Face the incoming shot.', { 0: keyLabel(settings.bindings.guard) });
+  $('lesson-hint').textContent = t(hint);
 }
 function processEvents() {
   for (const e of game.drainEvents()) {
@@ -243,24 +371,28 @@ function processEvents() {
   }
 }
 let uiCache = {};
-function setText(id, value) { if (uiCache[id] !== value) { $(id).textContent = value; uiCache[id] = value; } }
+function setText(id, value) { const translated = t(value); if (uiCache[id] !== translated) { $(id).textContent = translated; uiCache[id] = translated; } }
 function setWidth(id, value) { const rounded = Math.round(clamp(value, 0, 1) * 100); if (uiCache[id] !== rounded) { $(id).style.width = `${rounded}%`; uiCache[id] = rounded; } }
 function updateHUD() {
   const p = game.player;
   setText('health-value', `${Math.ceil(p.hp)} / ${p.maxHp}`); setWidth('health-fill', p.hp / p.maxHp);
   $('health-meter').classList.toggle('low', p.hp < p.maxHp * .3);
   $('health-meter').setAttribute('aria-valuenow', String(Math.ceil(p.hp))); $('health-meter').setAttribute('aria-valuemax', String(p.maxHp));
-  setText('guard-value', p.broken > 0 ? 'Broken' : String(Math.ceil(p.guard))); setWidth('guard-fill', p.guard / 100);
+  setText('guard-value', p.broken > 0 ? 'Broken' : String(Math.ceil(p.guard))); setWidth('guard-fill', p.guard / p.maxGuard);
   setText('dash-value', p.dashCd > 0 ? `${p.dashCd.toFixed(1)}s` : 'Ready'); setWidth('dash-fill', 1 - p.dashCd / p.dashCooldown);
-  const inRun = !['title', 'tutorial'].includes(game.mode), chapter = game.room >= 4 ? 'CHAPTER 02' : 'CHAPTER 01';
+  setText('ability-name', game.forms.ability === 'alternate' ? ABILITIES[game.weapon].alternate : ABILITIES[game.weapon].name);
+  setText('ability-value', p.abilityCd > 0 ? `${p.abilityCd.toFixed(1)}s` : 'Ready'); setWidth('ability-fill', 1 - p.abilityCd / p.abilityCooldown);
+  setText('touch-ability-state', p.abilityCd > 0 ? `${p.abilityCd.toFixed(1)}s` : 'Ready');
+  const inRun = !['title', 'tutorial'].includes(game.mode), chapter = game.runMode === 'practice' ? 'PRACTICE' : game.runMode === 'rush' ? 'BOSS RUSH' : game.room >= 8 ? 'CHAPTER 03' : game.room >= 4 ? 'CHAPTER 02' : 'CHAPTER 01';
   setText('chapter-label', game.mode === 'tutorial' ? 'THE BASICS' : chapter);
-  setText('room-value', inRun && game.room >= 0 ? `STOP ${game.room + 1} / 8` : 'THE ADVENTURE');
+  setText('room-value', game.runMode === 'practice' ? 'PRACTICE' : inRun && game.room >= 0 ? `STOP ${game.room + 1} / ${game.route.length}` : 'THE ADVENTURE');
   setText('weapon-value', WEAPONS[game.weapon].name); setText('ink-value', `${game.ink} ink`);
   setText('combat-state', p.broken > 0 ? 'Guard broken · release to recover' : p.counter > 0 ? 'Counter ready · swing now' : '');
-  setText('wave-value', game.mode === 'combat' ? `WAVE ${game.wave + 1} / ${NODES[game.node].waves.length}` : 'YOU ARE LINE');
+  setText('wave-value', game.mode === 'combat' ? `WAVE ${game.wave + 1} / ${game.currentNode.waves.length}` : 'YOU ARE LINE');
   setText('touch-dash-state', p.dashCd > 0 ? `${p.dashCd.toFixed(1)}s` : 'Ready');
   const nodes = $('room-progress').children;
   for (let i = 0; i < nodes.length; i++) {
+    nodes[i].hidden = game.runMode === 'practice' || i >= game.route.length;
     nodes[i].classList.toggle('active', inRun && i === game.room); nodes[i].classList.toggle('done', inRun && i < game.room);
     if (inRun && i === game.room) nodes[i].setAttribute('aria-current', 'step'); else nodes[i].removeAttribute('aria-current');
   }
@@ -272,20 +404,25 @@ function updateHUD() {
 }
 try {
   renderer = new Renderer(canvas, game, settings);
-  input = new Input(canvas, () => ['combat', 'tutorial'].includes(game.mode), () => { game.pause(); processEvents(); }, () => audio.unlock());
+  input = new Input(canvas, () => ['combat', 'tutorial'].includes(game.mode), () => { game.pause(); processEvents(); }, () => audio.unlock(), settings);
   $('build-button').addEventListener('click', () => { game.pause(); processEvents(); showBuild(); });
   $('pause-button').addEventListener('click', () => { input.clear(); game.pause(); processEvents(); });
   $('sound-button').addEventListener('click', () => { audio.unlock(); settings.sound = !settings.sound; store.saveSettings(settings); applySettings(); });
   $('skip-tutorial').addEventListener('click', () => { input.clear(); game.finishTutorial(); processEvents(); });
   dialog.addEventListener('cancel', e => {
     e.preventDefault();
-    if (['settings', 'confirm', 'build', 'weapons'].includes(dialogView)) showMode();
+    if (['settings', 'confirm', 'build', 'weapons', 'workshop', 'practice', 'journal', 'history', 'report'].includes(dialogView)) showMode();
     else if (game.mode === 'paused') { closeDialog(); game.resume(); processEvents(); }
   });
   const autoPause = () => { input.clear(); game.pause(); processEvents(); };
   window.addEventListener('blur', autoPause);
   document.addEventListener('visibilitychange', () => { if (document.hidden) autoPause(); });
   window.addEventListener('pagehide', () => input.clear());
+  window.addEventListener('weby:language', () => {
+    game.pause(); processEvents(); applySettings(); renderer.drawPaper(); uiCache = {}; updateHUD();
+    const views = { settings: showSettings, workshop: showWorkshop, practice: showPractice, journal: showJournal, history: showHistory, report: showReport, build: showBuild };
+    (views[dialogView] || showMode)(); if (game.mode === 'tutorial') lessonUI();
+  });
   window.matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change', e => {
     if (e.matches) { settings.reduced = true; store.saveSettings(settings); applySettings(); }
   });
@@ -293,10 +430,11 @@ try {
   let previous = performance.now(), accumulator = 0, hudClock = 0;
   function frame(now) {
     const dt = Math.min(Math.max((now - previous) / 1000, 0), .1); previous = now;
+    input.pollGamepad();
     const active = ['combat', 'tutorial'].includes(game.mode);
     accumulator = active ? Math.min(accumulator + dt, .1) : 0;
     while (accumulator >= 1 / 60) {
-      game.step(1 / 60, input.sample(settings.holdAttack, game.hitStop <= 0)); accumulator -= 1 / 60;
+      game.step(1 / 60, input.sample(settings.holdAttack, game.hitStop <= 0, game.player)); accumulator -= 1 / 60;
       processEvents();
       if (!['combat', 'tutorial'].includes(game.mode)) { accumulator = 0; break; }
     }

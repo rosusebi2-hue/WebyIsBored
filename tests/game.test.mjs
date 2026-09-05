@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Game, idleInput } from '../games/stick-and-swing/src/engine.js';
 import { SaveStore, validateCheckpoint } from '../games/stick-and-swing/src/storage.js';
-import { createPlayer, playerStats, ROUTE, NODES, WEAPONS, UPGRADES } from '../games/stick-and-swing/src/config.js';
+import { createPlayer, playerStats, ROUTE, NODES, WEAPONS, UPGRADES, EVENTS } from '../games/stick-and-swing/src/config.js';
 const memory = () => { const map = new Map(); return { getItem: k => map.get(k) || null, setItem: (k, v) => map.set(k, v), removeItem: k => map.delete(k) }; };
 function fresh(seed = 123) { const store = new SaveStore(memory()), game = new Game(store); game.startNew(false, seed); game.chooseRoute('first'); game.beginEncounter(); game.drainEvents(); return { game, store }; }
 function steps(game, count, input = {}) { for (let i = 0; i < count; i++) game.step(1 / 60, { ...idleInput(), ...input }); }
@@ -142,13 +142,13 @@ test('both bosses use three distinct patterns, transition phase, and leave recov
     assert.deepEqual([...attacks].sort(), patterns); assert.equal(boss.type, type);
     boss.hp = boss.maxHp * .4; boss.state = 'approach'; boss.cooldown = 0; game.step(1 / 60);
     assert.equal(boss.phase, 2); assert.equal(boss.state, 'recover');
-    clearBattle(game); assert.equal(game.mode, index === 7 ? 'victory' : 'reward');
+    clearBattle(game); assert.equal(game.mode, 'reward');
   }
 });
 
-test('every branch completes an eight-stop adventure and victory is awarded only once', () => {
-  // All 16 combinations of the four fork decisions, across all three weapons.
-  for (const weapon of Object.keys(WEAPONS)) for (let mask = 0; mask < 16; mask++) {
+test('every branch completes a twelve-stop adventure and victory is awarded only once', () => {
+  // All 128 combinations of the seven fork decisions, across all three weapons.
+  for (const weapon of Object.keys(WEAPONS)) for (let mask = 0; mask < 128; mask++) {
     const { game, store } = fresh(); game.startNew(false, 100 + mask, weapon); let fork = 0;
     for (let stop = 0; stop < ROUTE.length; stop++) {
       assert.equal(game.mode, 'route'); const options = game.routeOptions(), id = options[options.length > 1 ? (mask >> fork++) & 1 : 0];
@@ -158,11 +158,12 @@ test('every branch completes an eight-stop adventure and victory is awarded only
       if (game.mode === 'reward') { assert.ok(game.choices.length); game.chooseUpgrade(game.choices[0]); }
       else if (game.mode === 'shop') { for (const item of [...game.stock]) game.buyItem(item); game.leaveShop(); }
       else if (game.mode === 'rest') game.takeRest();
-      if (stop < 7) assert.ok(validateCheckpoint(store.loadRun()));
+      if (game.mode === 'event') { const event = EVENTS.find(e => e.id === game.eventId); game.chooseEvent(event.choices.find(c => !c.secret && !(c.hurt || c.ink < 0)).id); }
+      if (stop < 11) assert.ok(validateCheckpoint(store.loadRun()));
     }
-    assert.equal(game.mode, 'victory'); assert.equal(game.path.length, 8); assert.equal(game.stats.bosses, 2);
-    assert.equal(store.loadRun(), null); assert.equal(store.profile().adventureWins, 1);
-    game.roomCleared(); steps(game, 120); assert.equal(store.profile().adventureWins, 1);
+    assert.equal(game.mode, 'victory'); assert.equal(game.path.length, 12); assert.equal(game.stats.bosses, 3);
+    assert.equal(store.loadRun(), null); assert.equal(store.profile().bookWins, 1);
+    game.roomCleared(); steps(game, 120); assert.equal(store.profile().bookWins, 1);
   }
 });
 

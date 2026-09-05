@@ -55,7 +55,7 @@ test('news is readable without scripts and matches its editable source', () => {
   const posts = JSON.parse(read('assets/hub/news.json')), page = read('news/index.html');
   assert.equal((page.match(/<article /g) || []).length, posts.length);
   assert.equal(new Set(posts.map(p => p.id)).size, posts.length);
-  assert.equal(posts[0].version, '2.1');
+  assert.equal(posts[0].version, '2.2');
   for (const post of posts) { assert.ok(page.includes(`id="${post.id}"`)); assert.ok(page.includes(post.title)); }
   const before = page;
   execFileSync(process.execPath, ['scripts/build-news.mjs'], { cwd: root });

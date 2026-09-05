@@ -2,8 +2,8 @@
    Keep the first playable entry as the featured game. Paths are relative to index.html. */
 window.WEBY_GAMES = [
   {
-    id: 'stick-and-swing', title: 'Stick & Swing', kicker: 'The Adventure Update · Version 2.1',
-    description: 'Three blades. Two pages. Your own way through. Choose your route, meet Nib, and challenge the Ink Queen in a bigger sketchbook adventure.',
+    id: 'stick-and-swing', title: 'Stick & Swing', kicker: 'The Living Sketchbook · Version 2.2',
+    description: 'Three chapters, three blades, and a book full of surprises. Master your weapons, discover forgotten drawings, and challenge the Margin Knight.',
     status: 'playable', href: 'games/stick-and-swing/', cover: 'assets/hub/stick-and-swing.webp',
     tags: ['Action', 'Roguelite', 'Single player'], controls: 'stick-and-swing'
   },

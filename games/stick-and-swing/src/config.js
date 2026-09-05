@@ -1,4 +1,4 @@
-export const VERSION = '2.1.0';
+export const VERSION = '2.2.0';
 export const WORLD = { width: 960, height: 600, inset: 46 };
 export const TAU = Math.PI * 2;
 export const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
@@ -15,11 +15,18 @@ export const ENEMIES = {
   spitter: { name: 'Spitter', hp: 38, speed: 63, radius: 16, damage: 12, color: '#ffd088', ink: 3 },
   warder: { name: 'Warder', hp: 105, speed: 68, radius: 21, damage: 18, color: '#8fcbff', ink: 5 },
   blotter: { name: 'Blotter', hp: 66, speed: 57, radius: 19, damage: 14, color: '#df9cd9', ink: 5 },
+  duelist: { name: 'Crossblade', hp: 90, speed: 108, radius: 18, damage: 17, color: '#f1bc79', ink: 5 },
+  sniper: { name: 'Needle Scribe', hp: 62, speed: 52, radius: 17, damage: 24, color: '#95dbe3', ink: 5 },
+  weaver: { name: 'Shield Weaver', hp: 85, speed: 62, radius: 20, damage: 12, color: '#a9c8ff', ink: 6 },
+  summoner: { name: 'Inkwright', hp: 110, speed: 44, radius: 22, damage: 15, color: '#edabcf', ink: 7 },
+  palimpsest: { name: 'The Palimpsest', hp: 850, speed: 74, radius: 27, damage: 19, color: '#bdedce', ink: 45, boss: true, secret: true },
+  knight: { name: 'The Margin Knight', hp: 2200, speed: 96, radius: 29, damage: 24, color: '#f1bc79', ink: 80, boss: true },
   brute: { name: 'The Scribbled Brute', hp: 1050, speed: 61, radius: 35, damage: 22, color: '#ff827d', ink: 35, boss: true },
   queen: { name: 'The Ink Queen', hp: 1650, speed: 90, radius: 28, damage: 18, color: '#d5a5ff', ink: 60, boss: true },
 };
 // Branches merge at the next stop. Every option advances exactly once.
-export const ROUTE = [['first'], ['archive', 'trial'], ['nib', 'shelter'], ['brute'], ['spillway'], ['gallery', 'gauntlet'], ['last-shop', 'last-rest'], ['queen']];
+export const ROUTE = [['first'], ['archive', 'trial'], ['nib', 'shelter'], ['brute'], ['spillway'], ['gallery', 'gauntlet'], ['last-shop', 'last-rest'], ['queen'], ['binding', 'crease'], ['stitches', 'foundry'], ['bind-shop', 'bind-rest'], ['knight']];
+export const RUSH_ROUTE = [['brute'], ['queen'], ['knight']];
 export const NODES = {
   first: { title: 'The first line', kind: 'combat', chapter: 1, layout: 'open', note: 'Clear two waves. Red ink swings; purple ink lunges.', reward: 12, waves: [['scrapper', 'scrapper', 'scrapper'], ['skitter', 'scrapper', 'spitter']], story: { speaker: 'THE MARGIN', title: 'The page remembers.', text: 'The Artist left you unfinished, Line. But something has started drawing in the dark. Follow the fresh ink. Find out who is holding the pen.' } },
   archive: { title: 'The torn archive', kind: 'combat', chapter: 1, layout: 'columns', note: 'Blue Warders block the front. Circle behind them or parry their swing.', reward: 16, waves: [['warder', 'scrapper', 'spitter'], ['warder', 'skitter', 'spitter']] },
@@ -32,7 +39,16 @@ export const NODES = {
   gauntlet: { title: 'The Queen’s rehearsal', kind: 'elite', chapter: 2, layout: 'crossing', note: 'Three mixed waves. More ink, less room for mistakes.', reward: 42, waves: [['warder', 'blotter', 'skitter'], ['spitter', 'blotter', 'skitter', 'scrapper'], ['warder', 'warder', 'blotter', 'spitter']] },
   'last-shop': { title: 'Nib’s last stop', kind: 'shop', chapter: 2, note: 'Your last chance to spend ink before the Queen.', story: { speaker: 'NIB', title: 'Before you turn the page.', text: '“The Queen thinks a drawing only matters if it is perfect. Funny thing is, she has been redrawing herself for years.” Nib opens his coat. “Take what helps. Then go be a mess.”' } },
   'last-rest': { title: 'The blank space', kind: 'rest', chapter: 2, note: 'Recover 50 health for free before the Queen.' },
-  queen: { title: 'The Queen’s ink court', kind: 'boss', chapter: 2, layout: 'court', note: 'Read the quills, leave marked puddles, and dash between the radial shots.', reward: 0, waves: [['queen']], story: { speaker: 'THE INK QUEEN', title: '“I can make you perfect.”', text: 'She wears a crown of snapped pen tips. Beneath her throne, a thousand versions of the same drawing wait to be erased. Line raises a blade. One version is enough.' } },
+  queen: { title: 'The Queen’s ink court', kind: 'boss', chapter: 2, layout: 'court', note: 'Read the quills, leave marked puddles, and dash between the radial shots.', reward: 24, outro: 'The Queen lowers her crown. Behind her throne, a golden seam opens. Someone has been stitching the abandoned pages together.', waves: [['queen']], story: { speaker: 'THE INK QUEEN', title: '“I can make you perfect.”', text: 'She wears a crown of snapped pen tips. Beneath her throne, a thousand versions of the same drawing wait to be erased. Line raises a blade. One version is enough.' } },
+  binding: { title: 'The torn binding', kind: 'combat', chapter: 3, layout: 'binding', note: 'Crossblades follow their first swing with a thrust. Wait for both before moving in.', reward: 24, waves: [['duelist', 'sniper', 'scrapper'], ['weaver', 'duelist', 'skitter']], story: { speaker: 'THE MARGIN', title: 'Held together by a thread.', text: 'The binding is full of drawings from other stories. Someone has sewn them together so none of them disappear. At the far end, a knight keeps watch.' } },
+  crease: { title: 'Through the crease', kind: 'elite', chapter: 3, layout: 'crease', note: 'Moving ink sweeps across the page. Watch the dashed warning before each crossing.', reward: 48, waves: [['duelist', 'sniper', 'weaver'], ['summoner', 'skitter', 'spitter'], ['duelist', 'warder', 'sniper']] },
+  stitches: { title: 'The last stitches', kind: 'combat', chapter: 3, layout: 'stitches', note: 'Defeat the Weaver to remove nearby shields. Inkwrights can summon two reinforcements.', reward: 28, waves: [['weaver', 'warder', 'sniper'], ['summoner', 'duelist', 'blotter']] },
+  foundry: { title: 'The pencil foundry', kind: 'elite', chapter: 3, layout: 'foundry', note: 'Break the ink barrels to blast nearby enemies. Leave their blast circles before they burst.', reward: 52, waves: [['summoner', 'weaver', 'duelist'], ['sniper', 'sniper', 'warder'], ['summoner', 'blotter', 'duelist']] },
+  'bind-shop': { title: 'Nib’s binding stall', kind: 'shop', chapter: 3, note: 'Prepare for the Margin Knight. Gifts and a health refill are available.' },
+  'bind-rest': { title: 'Between the threads', kind: 'rest', chapter: 3, note: 'Recover 50 health for free before the final duel.' },
+  knight: { title: 'The final margin', kind: 'boss', chapter: 3, layout: 'throne', note: 'The Knight alternates sword and shield stances. Parry a thrust, then strike during recovery.', reward: 0, waves: [['knight']], story: { speaker: 'THE MARGIN KNIGHT', title: '“Someone had to hold the pages.”', text: 'The Knight has not been keeping you out. He has been keeping the book together. But he no longer knows how to let go. Line offers to take a turn.' } },
+  'secret-duel': { title: 'A drawing beneath the drawing', kind: 'boss', chapter: 2, layout: 'sanctum', note: 'The Palimpsest redraws old attacks. Defeat it to claim its seal.', reward: 20, waves: [['palimpsest']] },
+
 };
 const stone = (x, y, radius = 36) => ({ x, y, radius });
 const pool = (x, y, radius = 53, offset = 0) => ({ x, y, radius, offset });
@@ -42,6 +58,13 @@ export const LAYOUTS = {
   crossing: { name: 'Red-ink crossing', obstacles: [stone(310, 300, 42), stone(650, 300, 42)], pools: [pool(480, 210, 57), pool(480, 390, 57, 3)] },
   spillway: { name: 'The spillway', obstacles: [stone(230, 295), stone(730, 295)], pools: [pool(370, 270, 50), pool(590, 340, 50, 3)] },
   court: { name: 'The ink court', obstacles: [stone(245, 290, 30), stone(715, 290, 30)], pools: [] },
+  binding: { name: 'The torn binding', obstacles: [stone(260, 280), stone(700, 280)], pools: [], props: [{ x: 400, y: 255, radius: 25, type: 'cover' }, { x: 560, y: 255, radius: 25, type: 'cover' }] },
+  crease: { name: 'The moving crease', obstacles: [stone(290, 215, 28), stone(670, 385, 28)], pools: [], sweep: true, props: [{ x: 480, y: 295, radius: 23, type: 'barrel' }] },
+  stitches: { name: 'The last stitches', obstacles: [stone(310, 190, 28), stone(650, 190, 28)], pools: [pool(480, 290, 47, 2)], props: [{ x: 285, y: 370, radius: 25, type: 'cover' }, { x: 675, y: 370, radius: 25, type: 'cover' }] },
+  foundry: { name: 'The pencil foundry', obstacles: [stone(480, 280, 34)], pools: [], props: [{ x: 290, y: 250, radius: 22, type: 'barrel' }, { x: 670, y: 360, radius: 22, type: 'barrel' }, { x: 700, y: 170, radius: 24, type: 'cover' }] },
+  throne: { name: 'The final margin', obstacles: [stone(215, 300, 30), stone(745, 300, 30)], pools: [], props: [{ x: 355, y: 210, radius: 24, type: 'cover' }, { x: 605, y: 210, radius: 24, type: 'cover' }] },
+  sanctum: { name: 'The hidden draft', obstacles: [stone(310, 280, 27), stone(650, 280, 27)], pools: [], sweep: true },
+
 };
 export const UPGRADES = [
   { id: 'reach', icon: '↗', name: 'A longer line', tag: 'REACH', description: 'Your blade reaches 22% farther.' },
@@ -58,8 +81,21 @@ export const UPGRADES = [
   { id: 'impact', weapon: 'pagebreaker', icon: '╋', name: 'Full stop', tag: 'PAGEBREAKER', description: 'Your third hit deals 45% more blade damage and knocks enemies farther back.' },
   { id: 'kindling', weapon: 'emberbrand', icon: '♨', name: 'Slow burn', tag: 'EMBERBRAND', description: 'Burns last four seconds and deal 10 damage per second. Hits still refresh them.' },
   { id: 'wildfire', weapon: 'emberbrand', icon: '✳', name: 'Wildfire', tag: 'EMBERBRAND', description: 'Burning enemies burst when defeated, dealing 22 damage to nearby enemies.' },
+  { id: 'focus', icon: '◴', name: 'A clear thought', tag: 'ABILITY', description: 'Your active ability recharges 25% faster.' },
+  { id: 'secondWind', icon: '+', name: 'Small victories', tag: 'HEALTH', description: 'Recover 3 health whenever you defeat a regular enemy.' },
+  { id: 'reservoir', icon: '◈', name: 'Deep reserves', tag: 'GUARD', description: 'Gain 25 maximum guard and refill it now.' },
+  { id: 'keen', icon: '◇', name: 'Remember the opening', tag: 'COUNTER', description: 'Your perfect-block counter stays ready for four seconds instead of two.' },
+  { id: 'momentum', icon: '»', name: 'Follow the motion', tag: 'DASH', description: 'After a dash, your next blade hit within 1.5 seconds deals 30% more damage.' },
+  { id: 'seal', secret: true, icon: '◎', name: 'Palimpsest’s seal', tag: 'SECRET', description: 'Gain 15 maximum health and recharge your ability 15% faster. Found only in the hidden duel.' },
+  { id: 'needle', weapon: 'scrapsteel', icon: '↗', name: 'Straight to the point', tag: 'SCRAPSTEEL', description: 'Your active ability deals 50% more damage.' },
+  { id: 'tempo', weapon: 'scrapsteel', icon: '〃', name: 'Borrowed time', tag: 'SCRAPSTEEL', description: 'Each perfect block removes two seconds from your ability cooldown.' },
+  { id: 'aftershock', weapon: 'pagebreaker', icon: '⌁', name: 'An echo below', tag: 'PAGEBREAKER', description: 'Your active ability adds a delayed 24-damage burst around you.' },
+  { id: 'stonewall', weapon: 'pagebreaker', icon: '▱', name: 'Unshakeable', tag: 'PAGEBREAKER', description: 'Using your ability restores 25 guard and reduces incoming damage by 30% for 1.5 seconds.' },
+  { id: 'firestorm', weapon: 'emberbrand', icon: '✳', name: 'A wider flame', tag: 'EMBERBRAND', description: 'Your active ability launches two extra burning projectiles.' },
+  { id: 'cinderstep', weapon: 'emberbrand', icon: '♨', name: 'Cinder steps', tag: 'EMBERBRAND', description: 'Dashing leaves a small flame behind for 1.5 seconds. Enemies inside take 12 damage per second.' },
+
 ];
-export const availableUpgrades = (weapon, owned = []) => UPGRADES.filter(u => (!u.weapon || u.weapon === weapon) && !owned.includes(u.id));
+export const availableUpgrades = (weapon, owned = [], includeSecret = false) => UPGRADES.filter(u => (!u.weapon || u.weapon === weapon) && (!u.secret || includeSecret) && !owned.includes(u.id));
 export const SHOP_HEAL = { id: 'mend', name: 'Fresh paper', icon: '+', price: 18, description: 'Recover 35 health now. One refill at this shop.' };
 export const giftPrice = id => UPGRADES.find(u => u.id === id)?.weapon ? 45 : 35;
 export const LESSONS = [
@@ -71,18 +107,60 @@ export const LESSONS = [
 ];
 export const freshStats = () => ({ time: 0, kills: 0, parries: 0, damageTaken: 0, inkEarned: 0, spent: 0, retries: 0, bosses: 0 });
 export function playerStats(upgrades = [], weapon = 'scrapsteel') {
-  return { weapon, maxHp: 100 + (upgrades.includes('heart') ? 25 : 0), damage: upgrades.includes('edge') ? 1.25 : 1,
+  return { weapon, maxHp: 100 + (upgrades.includes('heart') ? 25 : 0) + (upgrades.includes('seal') ? 15 : 0), damage: upgrades.includes('edge') ? 1.25 : 1,
     reach: upgrades.includes('reach') ? 1.22 : 1, dashCooldown: upgrades.includes('dash') ? .77 : 1.1,
     echo: upgrades.includes('echo'), healParry: upgrades.includes('parry') ? 6 : 0,
     guardCost: upgrades.includes('guard') ? .65 : 1, armor: upgrades.includes('armor') ? .85 : 1,
     counterMultiplier: upgrades.includes('riposte') ? 2.2 : 1.65, attackSpeed: upgrades.includes('flurry') ? .78 : 1,
     burnDuration: upgrades.includes('kindling') ? 4 : 2, burnDamage: upgrades.includes('kindling') ? 10 : 7,
-    wildfire: upgrades.includes('wildfire'), faultline: upgrades.includes('faultline'), impact: upgrades.includes('impact') };
+    wildfire: upgrades.includes('wildfire'), faultline: upgrades.includes('faultline'), impact: upgrades.includes('impact'),
+    maxGuard: upgrades.includes('reservoir') ? 125 : 100, abilityCooldown: (weapon === 'pagebreaker' ? 8 : 7) * (upgrades.includes('focus') ? .75 : 1) * (upgrades.includes('seal') ? .85 : 1),
+    healKill: upgrades.includes('secondWind') ? 3 : 0, counterTime: upgrades.includes('keen') ? 4 : 2, momentum: upgrades.includes('momentum'),
+    needle: upgrades.includes('needle'), tempo: upgrades.includes('tempo'), aftershock: upgrades.includes('aftershock'), stonewall: upgrades.includes('stonewall'), firestorm: upgrades.includes('firestorm'), cinderstep: upgrades.includes('cinderstep') };
 }
 export function createPlayer(upgrades = [], hp, weapon = 'scrapsteel') {
   const stats = playerStats(upgrades, weapon);
   return { x: 480, y: 465, radius: 17, facing: -Math.PI / 2, hp: clamp(hp ?? stats.maxHp, 1, stats.maxHp), ...stats,
-    guard: 100, guarding: false, guardAge: 9, guardDelay: 0, broken: 0, dash: 0, dashCd: 0,
+    guard: stats.maxGuard, abilityCd: 0, skillRush: 0, skillHits: new Set(), momentumTime: 0, fortify: 0, guarding: false, guardAge: 9, guardDelay: 0, broken: 0, dash: 0, dashCd: 0,
     dashX: 0, dashY: -1, invulnerable: 0, attack: null, attackCd: 0, combo: 0, comboWindow: 0, counter: 0,
     vx: 0, vy: 0, walk: 0, flash: 0 };
 }
+
+export const ABILITIES = {
+  scrapsteel: { name: 'Lunging strike', description: 'Lunge forward, safely cutting through enemies for 40 damage.', alternate: 'Retort', alternateDescription: 'Reflect nearby shots, restore 20 guard, and prepare a counterattack.' },
+  pagebreaker: { name: 'Ground smash', description: 'Deal 60 damage around you and break shields.', alternate: 'Faultfront', alternateDescription: 'Launch three shield-piercing waves forward for 22 damage each.' },
+  emberbrand: { name: 'Flame fan', description: 'Launch five burning projectiles for 16 damage each.', alternate: 'Firewheel', alternateDescription: 'Launch eight burning projectiles around you for 12 damage each.' },
+};
+export const FINISHERS = {
+  scrapsteel: { name: 'Needlepoint', description: 'The third hit becomes a narrow thrust: 45 damage and 155 reach.' },
+  pagebreaker: { name: 'Roundabout', description: 'The third hit strikes in every direction: 34 damage and 112 reach.' },
+  emberbrand: { name: 'Flashpoint', description: 'The third hit burns enemies all around you: 17 damage and 120 reach.' },
+};
+export const MASTERIES = {
+  scrapsteel: [{ metric: 'kills', goal: 45, label: 'Defeat 45 enemies', unlock: 'finisher' }, { metric: 'parries', goal: 12, label: 'Make 12 perfect blocks', unlock: 'ability' }, { metric: 'bosses', goal: 3, label: 'Defeat 3 bosses', unlock: 'appearance' }],
+  pagebreaker: [{ metric: 'shieldBreaks', goal: 8, label: 'Break 8 shields with a third hit or ability', unlock: 'finisher' }, { metric: 'abilityHits', goal: 30, label: 'Hit enemies 30 times with your ability', unlock: 'ability' }, { metric: 'bosses', goal: 3, label: 'Defeat 3 bosses', unlock: 'appearance' }],
+  emberbrand: [{ metric: 'burnKills', goal: 20, label: 'Defeat 20 burning enemies', unlock: 'finisher' }, { metric: 'abilityHits', goal: 30, label: 'Hit enemies 30 times with your ability', unlock: 'ability' }, { metric: 'bosses', goal: 3, label: 'Defeat 3 bosses', unlock: 'appearance' }],
+};
+export const masteryEmpty = () => ({ kills: 0, parries: 0, bosses: 0, shieldBreaks: 0, abilityHits: 0, burnKills: 0 });
+export const unlocked = (profile, weapon, part) => { const task = MASTERIES[weapon].find(t => t.unlock === part); return (profile.mastery?.[weapon]?.[task.metric] || 0) >= task.goal; };
+export const SYNERGIES = [
+  { ids: ['riposte', 'tempo'], title: 'Countercraft', text: 'Perfect blocks empower your blade and bring your ability back sooner.' },
+  { ids: ['impact', 'faultline'], title: 'Breaking point', text: 'Your finishing blow combines a heavy hit with a forward shockwave.' },
+  { ids: ['kindling', 'wildfire'], title: 'Chain reaction', text: 'Long burns help trigger bursts when enemies fall.' },
+  { ids: ['dash', 'momentum'], title: 'Moving ink', text: 'Frequent dashes create more empowered attacks.' },
+  { ids: ['focus', 'aftershock'], title: 'Rolling thunder', text: 'A shorter ability cooldown means more delayed bursts.' },
+];
+export const EVENTS = [
+  { id: 'rescue', title: 'A drawing in the rain', text: 'A tiny sketch is washing away. Nib can patch its page, but needs a little ink.', choices: [{ id: 'help', label: 'Give 12 ink · rescue the drawing and recover 20 health', ink: -12, heal: 20, rescue: true }, { id: 'leave', label: 'Leave the drawing with Nib · keep your ink' }] },
+  { id: 'well', title: 'The forgotten ink well', text: 'There is enough left for one useful thing. The choice is yours.', choices: [{ id: 'drink', label: 'Restore the page · recover 25 health', heal: 25 }, { id: 'bottle', label: 'Bottle the ink · gain 18 ink', ink: 18 }] },
+  { id: 'bargain', title: 'A suspicious signature', text: 'A name writes itself beneath your feet. It offers ink in exchange for a piece of your page.', choices: [{ id: 'accept', label: 'Lose 20 health · gain 35 ink', hurt: 20, ink: 35 }, { id: 'decline', label: 'Cross it out · continue safely' }] },
+  { id: 'duel', title: 'Under the old drawing', text: 'A second figure moves beneath the paper. You can open its hidden arena or leave the page intact.', choices: [{ id: 'fight', label: 'Enter the hidden duel · win the Palimpsest’s seal', secret: true }, { id: 'leave', label: 'Leave the hidden drawing undisturbed' }] },
+  { id: 'merchant', title: 'A folded envelope', text: 'Nib left supplies for whoever made it this far. Only one parcel will fit in your pocket.', choices: [{ id: 'paper', label: 'Take the paper · recover 30 health', heal: 30 }, { id: 'ink', label: 'Take the ink · gain 22 ink', ink: 22 }] },
+  { id: 'echo', title: 'The drawing that answered', text: 'A faint voice asks if anyone is still reading. A small kindness could bring it back into the story.', choices: [{ id: 'answer', label: 'Offer 10 health · rescue the drawing and gain 25 ink', hurt: 10, ink: 25, rescue: true }, { id: 'listen', label: 'Stay and listen · recover 10 health', heal: 10 }] },
+];
+export const JOURNAL = {
+  scrapper: 'A short red slash. Step out of its cone, then strike during recovery.', skitter: 'A straight purple charge. Move sideways after the warning locks.', spitter: 'A gold shot. Use cover or tap guard just before impact.', warder: 'A blue shield guards the front. Circle behind, parry, or use a heavy shield-breaking hit.', blotter: 'Its circles lock onto your position before filling. Floor ink cannot be blocked.',
+  duelist: 'Crossblade attacks twice. Avoid the slash and the following thrust before closing in.', sniper: 'Needle Scribe locks a long aiming line. Step sideways or reflect the shot.', weaver: 'Nearby drawings take less damage while the Weaver lives. Defeat it first.', summoner: 'Inkwright can summon two Scrappers. Strike during its long summoning warning.',
+  brute: 'The Brute cycles a charge, a shockwave, and a fan. Its second phase is faster, but recovery still leaves an opening.', queen: 'The Queen alternates quill fans, marked pools, and radial shots. Dash through gaps and attack during recovery.', knight: 'The Knight switches between shield and sword stances. Parrying opens its defence; sword stance includes a second attack.', palimpsest: 'The hidden drawing repeats familiar attacks. Defeat it to earn a seal that strengthens health and ability recovery.',
+};
+export const DEFAULT_BINDINGS = { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD', attack: 'Space', guard: 'KeyF', dash: 'ShiftLeft', ability: 'KeyQ', pause: 'Escape' };
