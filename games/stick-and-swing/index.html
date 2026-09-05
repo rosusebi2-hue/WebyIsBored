@@ -1,206 +1,40 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-  <title>Stick & Swing — The Last Good Line</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Permanent+Marker&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../../css/style.css">
-  <link rel="stylesheet" href="../../assets/hub/game-nav.css">
-  <meta name="description" content="Play Stick &amp; Swing: The Last Good Line. A hand-drawn arena fighter with Story and Wave modes, free in your browser.">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b1018">
+  <meta name="description" content="A drawing worth fighting for. Learn to swing, dash, and parry in Stick & Swing: The First Page, a free sketchbook action game.">
+  <title>Stick &amp; Swing — The First Page · WebyIsBored</title>
+  <link rel="icon" href="../../assets/hub/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="game.css">
+  <script type="module" src="src/app.js"></script>
 </head>
-<body class="state-menu">
-<canvas id="game"></canvas>
-
-<div id="hud">
-  <div id="hp-wrap" class="panel">
-    <div id="hp-label"><span>HP</span><small id="mini-build">SCRAPSTEEL • WRAPS • BOARD</small></div>
-    <div class="bar-bg"><div id="hp-bar-fill" class="bar-fill"></div></div>
-    <div id="hp-text">100 / 100</div>
-  </div>
-  <div id="xp-wrap" class="panel">
-    <div id="xp-title"><span>INK LEVEL <span id="xp-level">1</span></span><span id="relic-mini">0 relics</span></div>
-    <div class="bar-bg"><div id="xp-bar-fill" class="bar-fill"></div></div>
-    <div id="xp-text">0 / 20</div>
-  </div>
-  <div id="shield-wrap" class="panel">
-    <div id="shield-title"><span>SHIELD ENERGY</span><span id="shield-name-mini">BOARD SHIELD</span></div>
-    <div class="bar-bg"><div id="shield-bar-fill" class="bar-fill"></div></div>
-    <div id="shield-text">100 / 100</div>
-  </div>
-  <div id="wave-wrap" class="panel">
-    <div id="wave-text">WAVE 1</div>
-    <div id="chapter-text">CHAPTER I — THE FIRST PAGE</div>
-    <div id="enemies-text">0 left</div>
-  </div>
-  <div id="gold-wrap" class="panel"><div class="coin"></div><div id="gold-text">0</div></div>
-  <div id="boss-hud"><div id="boss-name">THE SCRIBBLED BRUTE</div><div id="boss-bar-wrap"><div id="boss-bar-fill"></div></div></div>
-  <div id="story-objective" class="panel hidden"><div class="objective-label">STORY OBJECTIVE</div><div id="story-objective-text">Keep moving.</div></div>
-  <div id="loadout-strip"></div>
-  <div id="utility-wrap">
-    <div class="panel utility-panel"><div class="utility-top"><span>DASH</span><span id="dash-status">READY</span></div><div class="bar-bg"><div id="dash-bar-fill" class="bar-fill"></div></div></div>
-    <div class="panel utility-panel"><div class="utility-top"><span>BLOCK</span><span id="block-status">HOLD RMB</span></div><div class="bar-bg"><div id="block-bar-fill" class="bar-fill"></div></div></div>
-  </div>
-  <button id="shop-btn" title="Spend gold on run upgrades">Shop</button>
-  <button id="help-btn" title="Explain the current systems">?</button>
-  <button id="music-btn" title="Toggle music">♫</button>
-  <button id="settings-btn" title="Settings">⚙</button>
-  <button id="pause-btn" title="Pause">Ⅱ</button>
-</div>
-
-<div id="menu-screen" class="screen">
-  <div class="title-panel menu-wide">
-    <a class="hub-return" href="../../">← All games</a>
-    <div class="eyebrow">A HAND-DRAWN ACTION ROGUELITE</div>
-    <h1>Stick <span class="amp">&amp;</span> Swing</h1>
-    <p class="story-subtitle">The Last Good Line</p>
-    <p class="tag menu-premise">A forgotten sketchbook is erasing itself. You are the last drawing still moving. Fight through abandoned pages, learn why the book was discarded, and decide whether a drawing needs its Artist to deserve an ending.</p>
-
-    <div class="mode-grid">
-      <button id="story-mode-btn" class="mode-card featured">
-        <div class="mode-kicker">RECOMMENDED FIRST</div>
-        <div class="mode-title">Story Mode</div>
-        <div class="mode-desc">A guided campaign with dialogue, tutorials, four chapters, named bosses, shops and a real ending. Mechanics are introduced one at a time instead of dumped on you.</div>
-        <div class="mode-meta">~20 combat encounters • animated comic scenes • exact autosave</div>
-      </button>
-      <button id="wave-mode-btn" class="mode-card">
-        <div class="mode-kicker">REPLAYABLE MODE</div>
-        <div class="mode-title">Wave Mode</div>
-        <div class="mode-desc">The branching roguelite run. Pick battle, elite, rest, forge, treasure and event pages. Build ridiculous sword/shield/clothes combinations and push as far as possible.</div>
-        <div class="mode-meta">Random routes • endless replayability</div>
-      </button>
-    </div>
-
-    <div class="btn-row menu-actions">
-      <button id="continue-story-btn" class="big-btn hidden">Continue Story</button>
-      <button id="how-to-play-btn" class="big-btn secondary">How It Works</button>
-      <button id="menu-settings-btn" class="big-btn secondary">Settings</button>
-    </div>
-    <div id="story-save-summary" class="save-summary hidden"></div>
-    <div id="best-wave-display" class="tag menu-record"></div>
-  </div>
-</div>
-
-
-<div id="comic-screen" class="screen hidden">
-  <div class="comic-shell">
-    <div class="comic-toolbar">
-      <div><div class="eyebrow" id="comic-chapter-label">PROLOGUE</div><h2 id="comic-title">How to Draw a Hero</h2></div>
-      <div class="comic-toolbar-actions"><button id="comic-skip-btn" class="sm-btn">Skip cinematic</button><button id="comic-menu-btn" class="sm-btn">Main Menu</button></div>
-    </div>
-    <div id="comic-page" class="comic-page"></div>
-    <div id="comic-tutorial" class="story-tutorial hidden"></div>
-    <div class="comic-footer">
-      <div class="story-objective-card"><span>Next</span><strong id="comic-objective">The story begins.</strong></div>
-      <div class="btn-row">
-        <button id="comic-special-btn" class="big-btn secondary hidden">Visit Shop First</button>
-        <button id="comic-continue-btn" class="big-btn">Turn the Page</button>
+<body>
+  <div class="game-shell">
+    <header class="game-header">
+      <a class="arcade-link" href="../../" aria-label="Back to the arcade"><span aria-hidden="true">←</span> The arcade</a>
+      <a class="game-wordmark" href="./">STICK <span>&amp;</span> SWING <small>THE FIRST PAGE</small></a>
+      <div class="header-actions"><a href="../../news/">News</a><button id="sound-button" type="button" aria-label="Mute sound" aria-pressed="false">Sound on</button><button id="pause-button" type="button" disabled>Pause <span>Ⅱ</span></button></div>
+    </header>
+    <main class="play-layout" aria-label="Stick and Swing game">
+      <section class="status-bar" aria-label="Player status">
+        <div class="health-panel"><div class="meter-label"><span>LINE <span class="health-cross" aria-hidden="true">+</span></span><strong id="health-value">100 / 100</strong></div><div class="meter health-meter" role="meter" aria-label="Health" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100" id="health-meter"><span id="health-fill"></span></div></div>
+        <div class="run-progress"><span class="chapter-label" id="chapter-label">CHAPTER 01</span><ol id="room-progress" aria-label="Run progress"><li aria-label="Room 1"></li><li aria-label="Room 2"></li><li aria-label="Room 3"></li><li class="boss-node" aria-label="Boss room"></li></ol><span id="room-value">THE FIRST PAGE</span></div>
+        <div class="ability-panel"><div class="ability"><div class="meter-label"><span>GUARD</span><strong id="guard-value">100</strong></div><div class="meter guard-meter"><span id="guard-fill"></span></div></div><div class="ability"><div class="meter-label"><span>DASH</span><strong id="dash-value">Ready</strong></div><div class="meter dash-meter"><span id="dash-fill"></span></div></div></div>
+      </section>
+      <div class="arena-wrap" id="arena-wrap">
+        <canvas id="arena" width="960" height="600" tabindex="0" aria-label="Game arena. Move with WASD or arrow keys. Attack with Space or left click, guard with F or right click, and dash with Shift. Escape pauses.">This game needs a browser with Canvas support.</canvas>
+        <div class="arena-top"><div class="room-banner" id="room-banner" hidden><span id="banner-kicker">THE MARGIN</span><h1 id="banner-title"></h1><p id="banner-text"></p></div><div class="boss-health" id="boss-health" hidden><div><span>THE SCRIBBLED BRUTE</span><strong id="boss-phase">FIRST DRAFT</strong></div><div class="meter boss-meter"><span id="boss-fill"></span></div></div></div>
+        <div class="tutorial-card" id="tutorial-card" hidden aria-live="polite"><div class="tutorial-heading"><span id="lesson-count">LESSON 1 / 5</span><button id="skip-tutorial" type="button">Skip lesson →</button></div><h2 id="lesson-title"></h2><p id="lesson-text"></p><small id="lesson-hint"></small></div>
+        <div class="arena-corner" id="arena-corner"><span class="corner-line"></span> YOU ARE LINE</div>
+        <div class="toast" id="toast" role="status" hidden></div>
       </div>
-    </div>
+      <div class="touch-controls" id="touch-controls" aria-label="Touch controls"><div class="joystick" id="joystick" aria-label="Drag to move"><span class="stick-guide"></span><span id="stick-thumb"></span><small>MOVE</small></div><div class="touch-actions"><button class="touch-action guard-action" id="touch-guard" type="button" aria-label="Hold to guard; tap just before impact to parry"><span aria-hidden="true">◇</span>Guard</button><button class="touch-action dash-action" id="touch-dash" type="button" aria-label="Dash"><span aria-hidden="true">»</span>Dash</button><button class="touch-action attack-action" id="touch-attack" type="button" aria-label="Hold to swing your sword"><span aria-hidden="true">╱</span>Swing</button></div></div>
+      <footer class="play-footer"><p class="keyboard-hints"><span><kbd>WASD</kbd> move</span><span><kbd>Mouse</kbd> aim</span><span><kbd>Click / Space</kbd> swing</span><span><kbd>Right click / F</kbd> guard</span><span><kbd>Shift</kbd> dash</span></p><p class="touch-hint">Aim assist is on for touch. Hold Swing to combo.</p><span class="save-note" id="save-note">Room checkpoints · saved on this device</span></footer>
+    </main>
+    <dialog id="game-dialog" aria-labelledby="dialog-title"><div class="dialog-inner" id="dialog-inner"><p class="dialog-eyebrow">THE FIRST PAGE</p><h2 id="dialog-title">Stick &amp; Swing</h2><p>Opening your sketchbook…</p></div></dialog>
+    <noscript><div class="fallback"><h1>JavaScript is needed to play</h1><p>Enable JavaScript in your browser, then reload this page.</p><a href="../../">Return to the arcade</a></div></noscript>
   </div>
-</div>
-
-<div id="story-dialogue-screen" class="screen hidden">
-  <div class="story-panel">
-    <div class="story-topline"><span id="story-chapter-label">CHAPTER I</span><span id="story-beat-label">1 / 5</span></div>
-    <h2 id="story-scene-title">A Line That Should Not Move</h2>
-    <div id="story-speaker" class="story-speaker">MARGIN</div>
-    <div id="story-copy" class="story-copy"></div>
-    <div id="story-tutorial" class="story-tutorial hidden"></div>
-    <div class="story-objective-card"><span>Objective</span><strong id="story-scene-objective">Survive.</strong></div>
-    <div class="btn-row story-buttons">
-      <button id="story-shop-before-btn" class="big-btn secondary hidden">Visit Shop First</button>
-      <button id="story-continue-btn" class="big-btn">Continue</button>
-      <button id="story-menu-btn" class="big-btn secondary">Main Menu</button>
-    </div>
-  </div>
-</div>
-
-<div id="story-outro-screen" class="screen hidden">
-  <div class="story-panel">
-    <div class="story-topline"><span>CHAPTER COMPLETE</span><span id="story-outro-progress">1 / 4</span></div>
-    <h2 id="story-outro-title">The Door Under the Ink</h2>
-    <div id="story-outro-speaker" class="story-speaker">MARGIN</div>
-    <div id="story-outro-copy" class="story-copy"></div>
-    <div class="btn-row story-buttons"><button id="story-next-chapter-btn" class="big-btn">Next Chapter</button></div>
-  </div>
-</div>
-
-<div id="story-ending-screen" class="screen hidden">
-  <div class="story-panel ending-panel">
-    <div class="eyebrow">STORY COMPLETE</div>
-    <h2 id="story-ending-title">The Ending You Draw Yourself</h2>
-    <div id="story-ending-copy" class="story-copy"></div>
-    <p class="tag">Story Mode is complete. Wave Mode remains available for replayable runs with the full branching system.</p>
-    <div class="btn-row"><button id="ending-wave-btn" class="big-btn">Play Wave Mode</button><button id="ending-menu-btn" class="big-btn secondary">Main Menu</button></div>
-  </div>
-</div>
-
-<div id="help-screen" class="screen hidden">
-  <div class="card-panel help-panel">
-    <div class="menu-header-row"><div><div class="eyebrow">NO MORE GUESSING</div><h2>How the game works</h2></div><button id="close-help-btn" class="sm-btn">Close</button></div>
-    <div class="help-grid">
-      <div class="help-card"><h3>Combat</h3><p><strong>Left Click / Space:</strong> swing your sword toward the cursor. <strong>Shift:</strong> dash. Movement and positioning matter more than standing still and trading hits.</p></div>
-      <div class="help-card"><h3>Blocking</h3><p><strong>Hold Right Click:</strong> raise your shield. You cannot attack while blocking. Only attacks inside your shield’s frontal angle are stopped, and blocking consumes shield energy.</p></div>
-      <div class="help-card"><h3>Gold & Shop</h3><p>Enemies drop gold, but every completed combat wave also gives a guaranteed clear reward. Stats are simple upgrades. Perks add mechanics. Swords, shields and clothes are build-defining equipment.</p></div>
-      <div class="help-card"><h3>Ink Levels</h3><p>Kills fill the Ink bar. Leveling pauses the game and gives three randomized perks. These are separate from the gold shop, so a run grows through both money and combat experience.</p></div>
-      <div class="help-card"><h3>Relics</h3><p>Relics are rare run modifiers found from elites, treasure, bosses and events. You can carry two. If you take a third, the oldest relic is replaced.</p></div>
-      <div class="help-card"><h3>Story vs Wave Mode</h3><p><strong>Story Mode</strong> uses animated comic cinematics and autosaves your scene, build, HP, equipment and in-progress battle. <strong>Wave Mode</strong> is the branching replayable mode where you choose what kind of page comes next.</p></div>
-    </div>
-    <div class="control-strip mouse-only"><span><b>WASD</b> move</span><span><b>LMB</b> attack</span><span><b>RMB</b> block</span><span><b>SHIFT</b> dash</span><span><b>B</b> shop</span><span><b>ESC</b> pause</span></div>
-  </div>
-</div>
-
-<div id="map-screen" class="screen hidden">
-  <div class="card-panel">
-    <div id="map-title"><div><div class="eyebrow">WAVE MODE — ROUTE CHOICE</div><h2>Choose your next page</h2></div><small id="map-subtitle">Wave 1 • Chapter I</small></div>
-    <div class="explain-box"><strong>What is this?</strong> Each card changes what happens next. Combat pages increase your wave count and pay a guaranteed clear reward. Non-combat pages trade immediate fighting for healing, upgrades, gold or risky events.</div>
-    <div id="map-options" class="choice-grid"></div>
-    <div class="btn-row" style="margin-top:16px"><button id="map-shop-btn" class="big-btn secondary">Open Shop</button><button id="map-help-btn" class="big-btn secondary">Explain Systems</button></div>
-  </div>
-</div>
-
-<div id="choice-screen" class="screen hidden"><div class="card-panel"><div class="eyebrow">RUN DECISION</div><h2 id="choice-title">Choose one</h2><p id="choice-tagline" class="tag left-tag"></p><div id="choice-options"></div></div></div>
-<div id="event-screen" class="screen hidden"><div class="card-panel"><div class="eyebrow">STRANGE PAGE</div><h2 id="event-title">Strange event</h2><p id="event-text" class="tag left-tag"></p><div id="event-options"></div></div></div>
-
-<div id="pause-screen" class="screen hidden">
-  <div class="card-panel pause-panel">
-    <a class="hub-return" href="../../">← All games</a>
-    <h2>Paused</h2><p class="tag">Combat is frozen. This menu does not advance the wave.</p>
-    <div class="btn-row"><button id="resume-btn" class="big-btn">Resume</button><button id="pause-shop-btn" class="big-btn secondary">Shop</button><button id="pause-help-btn" class="big-btn secondary">How It Works</button><button id="pause-settings-btn" class="big-btn secondary">Settings</button><button id="quit-run-btn" class="big-btn secondary">Main Menu</button></div>
-  </div>
-</div>
-
-<div id="shop-modal" class="modal-overlay hidden">
-  <div class="card-panel">
-    <div class="shop-header"><div><div class="eyebrow">RUN SHOP</div><h2>Spend gold to shape this run</h2></div><div id="shop-gold">0 gold</div><button id="close-shop-btn" class="sm-btn">Close</button></div>
-    <div class="explain-box shop-explainer"><strong>Categories:</strong> Stats = dependable numbers. Perks = new mechanics. Swords = attack style. Shields = defense style. Clothes = passive playstyle. Relics = rare items you have already found.</div>
-    <div id="shop-tabs"></div><div id="shop-content"></div>
-  </div>
-</div>
-
-<div id="settings-screen" class="screen hidden">
-  <div class="card-panel">
-    <div class="menu-header-row"><div><div class="eyebrow">OPTIONS</div><h2>Settings</h2></div><button id="close-settings-btn" class="sm-btn">Close</button></div>
-    <p class="tag left-tag">Each story chapter already changes the sketchbook palette, so there is no separate eight-theme selector. The world itself changes color as the story gets darker.</p>
-    <div class="settings-grid">
-      <div class="setting-group"><h3>Audio</h3><div class="setting"><span>Master volume</span><input id="master-volume" type="range" min="0" max="1" step="0.01"></div><div class="setting"><span>SFX volume</span><input id="sfx-volume" type="range" min="0" max="1" step="0.01"></div><div class="setting"><span>Music volume</span><input id="music-volume" type="range" min="0" max="1" step="0.01"></div><div class="setting"><label class="toggle"><input id="music-enabled" type="checkbox"> <span>Music enabled</span></label></div><div class="setting"><span>Music track</span><select id="music-track"></select></div></div>
-      <div class="setting-group"><h3>Interface</h3><div class="setting"><span>Reduced screen shake</span><label class="toggle"><input id="reduced-shake" type="checkbox"> <span>Enable</span></label></div><div class="setting"><span>Auto-open route map</span><label class="toggle"><input id="auto-map" type="checkbox"> <span>Enable</span></label></div><div class="setting"><span>Touch controls</span><span id="touch-status">Detected automatically</span></div><div class="setting"><span>Best wave</span><strong id="settings-best-wave">0</strong></div><div class="setting"><span>Best kills</span><strong id="settings-best-kills">0</strong></div></div>
-    </div>
-  </div>
-</div>
-
-<div id="gameover-screen" class="screen hidden"><div class="card-panel gameover-panel"><h2>You got erased.</h2><p id="gameover-context" class="tag">The page won this time.</p><div id="stats-list"></div><div class="btn-row gameover-actions"><button id="restart-btn" class="big-btn">Try Again</button><button id="gameover-menu-btn" class="big-btn secondary">Main Menu</button></div></div></div>
-<div id="victory-screen" class="screen hidden"><div class="card-panel gameover-panel"><h2>The sketchbook submits.</h2><p class="tag">Wave Mode’s final chapter is complete. You can continue into endless pages.</p><div id="victory-stats"></div><div class="btn-row gameover-actions"><button id="continue-endless-btn" class="big-btn">Continue Endless</button><button id="victory-menu-btn" class="big-btn secondary">Main Menu</button></div></div></div>
-
-<div id="wave-clear"><div id="wave-clear-card"><h3 id="wave-clear-title">Page Cleared</h3><p id="wave-clear-reward">+0g base reward</p></div></div>
-<div id="autosave-indicator">Story saved</div>
-<div id="toast-stack"></div>
-
-<div id="touch-controls"><div id="joystick-zone"><div id="joystick-knob"></div></div><button id="dash-btn" class="touch-btn">DASH</button><button id="block-btn" class="touch-btn">BLOCK</button><button id="attack-btn" class="touch-btn">HIT</button></div>
-
-<script src="../../js/story-data.js"></script>
-<script src="../../js/game.js"></script>
 </body>
 </html>

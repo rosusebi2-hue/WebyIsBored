@@ -1,0 +1,39 @@
+[
+  {
+    "id": "stick-and-swing-2-0",
+    "date": "2026-09-05",
+    "type": "Release",
+    "game": "Stick & Swing",
+    "version": "2.0",
+    "title": "A fresh page. A whole new fight.",
+    "summary": "Stick & Swing has been rebuilt around a simple idea: read the attack, make your move, and make every swing count. The First Page is a complete short run with four rooms and one boss.",
+    "featured": true,
+    "sections": [
+      { "title": "What’s new", "items": [
+        "A five-step playable tutorial for movement, sword combos, dashing, blocking, and perfect blocks. Practice is safe, and you can skip straight into a run.",
+        "A three-hit sword combo, optional hold-to-attack, clear enemy warnings, guard breaks, and reflected projectiles. Perfect blocks power up your next swing.",
+        "Three distinct enemies: the close-range Scrapper, charging Skitter, and ranged Spitter. Inkstones provide cover in the middle rooms.",
+        "The Scribbled Brute returns with charges, expanding shockwaves, projectile fans, and a faster second phase.",
+        "Choose a meaningful upgrade between rooms: longer reach, quicker dashes, a third-hit burst, stronger swings, more health, or healing perfect blocks.",
+        "Room checkpoints, saved reward choices, pause-on-focus-loss, touch controls with aim assist, and a reduced-effects setting."
+      ] },
+      { "title": "A new beginning", "paragraph": "This release replaces the previous Story and Wave modes, shop, and equipment systems. Old saves are not compatible with the remake; your first visit starts a new run. The First Page is the first playable chapter. More chapters and weapon styles will follow as the game grows." },
+      { "title": "A home for every update", "paragraph": "News now has its own page, and future game slots have moved to Coming Soon. The arcade homepage is dedicated to games you can play today." }
+    ],
+    "link": "../games/stick-and-swing/",
+    "linkLabel": "Play The First Page"
+  },
+  {
+    "id": "arcade-opening",
+    "date": "2026-09-05",
+    "type": "Site update",
+    "game": "WebyIsBored",
+    "title": "The arcade is open.",
+    "summary": "WebyIsBored is now a home for a growing collection of browser games. Pick a game, jump in, and return to the arcade whenever you’re ready for something else.",
+    "sections": [
+      { "title": "The starting lineup", "paragraph": "Stick & Swing is our first playable game. Three clearly marked spaces are reserved for future games. More to play as we build them." }
+    ],
+    "link": "../",
+    "linkLabel": "Visit the arcade"
+  }
+]

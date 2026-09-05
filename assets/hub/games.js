@@ -2,8 +2,8 @@
    Keep the first playable entry as the featured game. Paths are relative to index.html. */
 window.WEBY_GAMES = [
   {
-    id: 'stick-and-swing', title: 'Stick & Swing', kicker: 'The Last Good Line',
-    description: 'One little drawing. A whole lot of trouble. Fight your way through a sketchbook that’s trying to erase you.',
+    id: 'stick-and-swing', title: 'Stick & Swing', kicker: 'The First Page · Version 2.0',
+    description: 'Swing. Dash. Make your mark. Fight through four rooms and face the Scribbled Brute in a whole new sketchbook adventure.',
     status: 'playable', href: 'games/stick-and-swing/', cover: 'assets/hub/stick-and-swing.webp',
     tags: ['Action', 'Roguelite', 'Single player'], controls: 'stick-and-swing'
   },

@@ -1,42 +1,26 @@
 # Adding a game to WebyIsBored
 
-The homepage is the arcade. Stick & Swing plays at `games/stick-and-swing/`, using the existing root `js/` and `css/` assets. The old `stick-and-swing-cinematic-story/` URL redirects there. The duplicated legacy assets are retained for compatibility, but the active route uses the root runtime.
+The arcade homepage contains playable games. The catalog is `assets/hub/games.js`. Unreleased entries are displayed only on `/coming-soon/`.
 
-## Publish another playable game
-
-1. Put the game and its own assets under `games/<slug>/`, with an `index.html` entrypoint.
-2. Add its cover under `assets/hub/`.
-3. Replace one placeholder in `assets/hub/games.js` with:
+1. Add the game's `index.html` and its own assets under `games/<slug>/`.
+2. Add cover art under `assets/hub/`.
+3. Replace a placeholder in `assets/hub/games.js` with a playable entry:
 
 ```js
 {
-  id: 'your-game',
-  title: 'Your Game',
-  kicker: 'A short subtitle',
-  description: 'Explain the actual activity in one sentence.',
-  status: 'playable',
-  href: 'games/your-game/',
-  cover: 'assets/hub/your-game.webp',
-  tags: ['Puzzle', 'Single player']
+  id: 'your-game', title: 'Your Game', kicker: 'A short subtitle',
+  description: 'Describe what the player does.',
+  status: 'playable', href: 'games/your-game/',
+  cover: 'assets/hub/your-game.webp', tags: ['Puzzle', 'Single player']
 }
 ```
 
-4. Include an `../../` link back to the arcade in the new game's menu.
-5. Check the root and nested game URLs. Keep URLs relative so the site works both on a custom domain and under a GitHub Pages repository prefix.
+4. Include an `../../` link to return to the arcade from the game.
+5. Add a release entry using [Publishing news](PUBLISHING_NEWS.md).
+6. Run `node --test tests/*.test.mjs`, commit, and confirm the GitHub Pages deployment.
 
-The catalog creates play links only for entries with `status: 'playable'` and a local `games/` path. Placeholder entries have no play links. The layout changes to a grid as playable games are added. Omit `controls` for a new game until it has its own control guide; do not reuse Stick & Swing's bindings for unrelated games.
+Only `status: 'playable'` entries with local `games/` paths get play links. Do not link placeholders to empty games. New games can omit `controls` until they have a matching guide; do not reuse another game's bindings.
 
-The static HTML includes a fallback for the current catalog. If the catalog changes substantially, update that fallback too so the existing game link remains usable when the enhancement script does not load.
+Keep paths relative so both the custom domain and a GitHub Pages repository prefix work. The static homepage fallback should remain useful without JavaScript. The first catalog item supplies the featured card; multiple playable games use a grid.
 
-Each game should use a unique localStorage prefix. Stick & Swing keeps its existing `stickswing_living_sketchbook` prefix, so moving to a nested path on the same origin retains its saves. Saves do not automatically move between different domains or browser profiles.
-
-## Current hub
-
-- Plain HTML/CSS/JavaScript; no package installation or build step.
-- One playable entry, three explicitly labeled placeholders.
-- Responsive layout, scroll reveals, cover zoom, card hover effects, and a native controls dialog.
-- Reduced-motion support and keyboard focus styles.
-- Custom cover illustration optimized to WebP. This is cover art, not a gameplay screenshot.
-- Existing GitHub Pages workflow deploys the repository on pushes to `main`.
-
-The user-facing domain is managed separately from the source code. This change does not purchase a domain or alter DNS.
+Use a unique localStorage namespace per game and validate saved values. Stick & Swing 2.0 uses `weby.stickSwing.run.v2`, `weby.stickSwing.profile.v2`, and `weby.stickSwing.settings.v2`. It has no cloud account or global leaderboard.

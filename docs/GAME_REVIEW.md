@@ -1,4 +1,6 @@
-# Stick & Swing: code review and remake proposal
+# Stick & Swing: original code review and remake proposal
+
+**Historical review.** Version 2.0 replaces the code described below. The First Page is now the active game; see [release notes](../news/index.html#stick-and-swing-2-0) and the [current README](../README.md). Later chapters and additional loadouts remain future work.
 
 Reviewed the game at commit `92f37bdce03be6ba49815a4cdb1ab6bb6193ab41` on 5 September 2026. This is a source review, with targeted executions of the real game functions in a Node VM using platform stubs. It is not a browser playtest or a completed balance study. The hub changes preserve the existing combat runtime and story data.
 
@@ -10,7 +12,7 @@ The game already has a lot of content. Its biggest problem is that complexity is
 
 ## How the current game works
 
-The game is a vanilla JavaScript Canvas 2D arena fighter. Movement is free across both screen axes; this is not a platformer. Combat, rendering, audio, progression, saves, input, and UI transitions live together in one approximately 122 KB closure in [game.js](../js/game.js). [story-data.js](../js/story-data.js) holds the narrative, scene objectives, and tutorial text. HTML supplies the HUD and menus; CSS draws the interface and animates the comic panels.
+The game is a vanilla JavaScript Canvas 2D arena fighter. Movement is free across both screen axes; this is not a platformer. Combat, rendering, audio, progression, saves, input, and UI transitions live together in one approximately 122 KB closure in [game.js](https://github.com/rosusebi2-hue/WebyIsBored/blob/92f37bdce03be6ba49815a4cdb1ab6bb6193ab41/js/game.js). [story-data.js](https://github.com/rosusebi2-hue/WebyIsBored/blob/92f37bdce03be6ba49815a4cdb1ab6bb6193ab41/js/story-data.js) holds the narrative, scene objectives, and tutorial text. HTML supplies the HUD and menus; CSS draws the interface and animates the comic panels.
 
 | System | Actual behavior |
 | --- | --- |

@@ -7,16 +7,16 @@
   <meta name="description" content="Pick a game and play. WebyIsBored is a growing collection of free browser games, starting with Stick & Swing.">
   <title>WebyIsBored — The arcade</title>
   <link rel="icon" href="assets/hub/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="assets/hub/hub.css">
-  <script src="assets/hub/games.js" defer></script>
-  <script src="assets/hub/hub.js" defer></script>
+  <link rel="stylesheet" href="assets/hub/hub.css?v=2.0.0">
+  <script src="assets/hub/games.js?v=2.0.0" defer></script>
+  <script src="assets/hub/hub.js?v=2.0.0" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#games">Skip to games</a>
   <div class="site-shell">
     <header class="site-header">
       <a class="brand" href="./" aria-label="WebyIsBored home"><span class="brand-mark" aria-hidden="true">w<span>:</span></span><span>weby<span class="brand-muted">is</span>bored<span class="brand-period">.</span></span></a>
-      <nav aria-label="Main navigation"><a class="nav-link active" href="#games" aria-current="page">The arcade</a><a class="nav-link" href="#coming-soon">Coming soon</a></nav>
+      <nav aria-label="Main navigation"><a class="nav-link active" href="./" aria-current="page">The arcade</a><a class="nav-link" href="news/">News</a><a class="nav-link" href="coming-soon/">Coming soon</a></nav>
       <span class="header-note">Free to play. Always curious.</span>
     </header>
     <main>
@@ -29,9 +29,9 @@
               <img class="feature-art" src="assets/hub/stick-and-swing.webp" alt="" width="1536" height="1024" fetchpriority="high">
               <div class="feature-shade" aria-hidden="true"></div>
               <div class="feature-copy">
-                <span class="badge"><span class="live-dot" aria-hidden="true"></span> PLAYABLE NOW</span>
-                <div class="feature-title"><span class="feature-kicker">THE LAST GOOD LINE</span><h3>Stick &amp; Swing</h3></div>
-                <p class="feature-description">One little drawing. A whole lot of trouble. Fight your way through a sketchbook that’s trying to erase you.</p>
+                <span class="badge"><span class="live-dot" aria-hidden="true"></span> NEW RELEASE · 2.0</span>
+                <div class="feature-title"><span class="feature-kicker">THE FIRST PAGE · VERSION 2.0</span><h3>Stick &amp; Swing</h3></div>
+                <p class="feature-description">Swing. Dash. Make your mark. Fight through four rooms and face the Scribbled Brute in a whole new sketchbook adventure.</p>
                 <span class="play-button">Play now <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 11 7-11 7z"/></svg></span>
               </div>
               <span class="cover-caption">STICK &amp; SWING / COVER ART</span>
@@ -40,25 +40,18 @@
           </article>
         </div>
       </section>
-      <section class="upcoming-section" id="coming-soon" aria-labelledby="upcoming-heading">
-        <div class="section-heading reveal"><h2 id="upcoming-heading">Room for more <span class="heading-spark" aria-hidden="true">↗</span></h2><span class="section-note">The next distractions start here.</span></div>
-        <div class="upcoming-grid" id="upcoming-games">
-          <article class="upcoming-card mint reveal"><div class="placeholder-art" aria-hidden="true"><span class="slot-number">02</span><span class="orbit"></span><span class="placeholder-cross">+</span></div><div class="upcoming-copy"><span class="placeholder-label">FUTURE GAME</span><h3>Game 02</h3><span class="coming-label">Coming soon</span></div></article>
-          <article class="upcoming-card lilac reveal"><div class="placeholder-art" aria-hidden="true"><span class="slot-number">03</span><span class="orbit"></span><span class="placeholder-cross">+</span></div><div class="upcoming-copy"><span class="placeholder-label">FUTURE GAME</span><h3>Game 03</h3><span class="coming-label">Coming soon</span></div></article>
-          <article class="upcoming-card amber reveal"><div class="placeholder-art" aria-hidden="true"><span class="slot-number">04</span><span class="orbit"></span><span class="placeholder-cross">+</span></div><div class="upcoming-copy"><span class="placeholder-label">FUTURE GAME</span><h3>Game 04</h3><span class="coming-label">Coming soon</span></div></article>
-        </div>
-        <p class="placeholder-note reveal">These are open spots for future games. Nothing to play here just yet.</p>
-      </section>
+
+      <a class="latest-update reveal" href="news/#stick-and-swing-2-0"><span class="update-label">JUST RELEASED</span><span>Stick &amp; Swing 2.0: The First Page</span><span class="update-link">Read the patch notes ↗</span></a>
     </main>
     <footer class="site-footer"><span class="footer-brand">webyisbored<span>.</span></span><span>A small arcade. An ongoing experiment.</span><a href="#games">Back to games <span aria-hidden="true">↑</span></a></footer>
   </div>
   <dialog class="controls-dialog" id="controls-dialog" aria-labelledby="controls-title">
     <div class="dialog-content">
       <div class="dialog-heading"><div><p class="eyebrow">BEFORE YOU JUMP IN</p><h2 id="controls-title">Stick &amp; Swing</h2></div><button class="close-button" type="button" aria-label="Close controls"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div>
-      <p class="dialog-description">Start with Story Mode for the guided campaign, or try Wave Mode for randomized routes.</p>
-      <dl class="controls-list"><div><dt>Move</dt><dd><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><span>or arrow keys</span></dd></div><div><dt>Aim</dt><dd>Move your mouse</dd></div><div><dt>Swing</dt><dd>Left click <span>or</span> <kbd>Space</kbd></dd></div><div><dt>Block</dt><dd>Hold right click</dd></div><div><dt>Dash</dt><dd><kbd>Shift</kbd></dd></div><div><dt>Shop / Pause</dt><dd><kbd>B</kbd><span>/</span><kbd>Esc</kbd></dd></div></dl>
-      <p class="control-tip"><strong>Face the danger.</strong> Blocking protects your front, and you can’t swing while blocking. Story Mode introduces blocking and dashing as you progress.</p>
-      <p class="touch-note">On a touchscreen, use the on-screen joystick and HIT, BLOCK, and DASH buttons. Moving sets your aim; standing still aims toward a nearby enemy.</p>
+      <p class="dialog-description">Learn the controls in a short playable tutorial, then fight through four rooms and one boss. Your progress is saved at room entrances.</p>
+      <dl class="controls-list"><div><dt>Move</dt><dd><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><span>or arrow keys</span></dd></div><div><dt>Aim</dt><dd>Move your mouse; Space uses aim assist</dd></div><div><dt>Swing</dt><dd>Hold left click <span>or</span> <kbd>Space</kbd></dd></div><div><dt>Block</dt><dd>Hold right click or F</dd></div><div><dt>Dash</dt><dd><kbd>Shift</kbd></dd></div><div><dt>Pause</dt><dd><kbd>Esc</kbd></dd></div></dl>
+      <p class="control-tip"><strong>Face the danger.</strong> Hold guard to block from the front, or tap it just before impact for a perfect block. Perfect blocks reflect shots and power your next swing.</p>
+      <p class="touch-note">On a touchscreen, drag the left stick to move. Hold Swing or Guard and tap Dash on the right. Aim assist selects the nearest enemy.</p>
       <a class="play-button dialog-play" href="games/stick-and-swing/">Play Stick &amp; Swing <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 11 7-11 7z"/></svg></a>
     </div>
   </dialog>
