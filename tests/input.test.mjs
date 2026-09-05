@@ -19,13 +19,13 @@ function platform() {
 }
 test('touch cancellation releases held attacks, guard, and movement', () => {
   const el = platform(), input = new Input(new Element(), () => true, () => {}, () => {});
-  el.get('joystick').fire('pointerdown', { pointerId: 1, clientX: 94, clientY: 58 });
+  el.get('joystick').fire('pointerdown', { pointerId: 1, clientX: 94, clientY: 51 });
   el.get('touch-attack').fire('pointerdown', { pointerId: 2 });
   el.get('touch-guard').fire('pointerdown', { pointerId: 3 });
   assert.equal(input.sample().moveX, 1); assert.equal(input.sample().attackHeld, true); assert.equal(input.sample().guardHeld, true);
   el.get('touch-attack').fire('pointercancel', { pointerId: 2 }); assert.equal(input.sample().attackHeld, false);
   input.clear(); assert.equal(input.sample().moveX, 0); assert.equal(input.sample().guardHeld, false);
-  el.get('joystick').fire('pointerdown', { pointerId: 4, clientX: 22, clientY: 58 }); assert.equal(input.sample().moveX, -1);
+  el.get('joystick').fire('pointerdown', { pointerId: 4, clientX: 22, clientY: 51 }); assert.equal(input.sample().moveX, -1);
 });
 test('keyboard edges are buffered across hit-stop and Space enables aim assist', () => {
   platform(); const canvas = new Element(), input = new Input(canvas, () => true, () => {}, () => {});
@@ -40,4 +40,11 @@ test('gameplay shortcuts do not steal keyboard activation from page buttons', ()
   platform(); const input = new Input(new Element(), () => true, () => {}, () => {});
   window.fire('keydown', { code: 'Space', repeat: false, target: { tagName: 'BUTTON' } });
   assert.equal(input.sample().attackPressed, false); assert.equal(input.sample().attackHeld, false);
+});
+
+test('a stationary mouse click aims at its actual position and cancellation releases it', () => {
+  platform(); const canvas = new Element(), input = new Input(canvas, () => true, () => {}, () => {});
+  canvas.fire('pointerdown', { pointerType: 'mouse', button: 0, clientX: 58, clientY: 58 });
+  assert.equal(input.sample().aimX, 480); assert.equal(input.sample().aimY, 300);
+  assert.equal(input.sample().attackHeld, true); window.fire('pointercancel', { pointerType: 'mouse' }); assert.equal(input.sample().attackHeld, false);
 });

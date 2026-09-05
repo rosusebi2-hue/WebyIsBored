@@ -1,5 +1,5 @@
-import { WORLD, clamp } from './config.js';
-import { idleInput } from './engine.js';
+import { WORLD, clamp } from './config.js?v=2.1.0';
+import { idleInput } from './engine.js?v=2.1.0';
 export class Input {
   constructor(canvas, active, onPause, unlock) {
     this.canvas = canvas; this.active = active; this.onPause = onPause; this.unlock = unlock;
@@ -26,6 +26,8 @@ export class Input {
     canvas.addEventListener('pointerdown', e => {
       if (!this.active() || e.pointerType !== 'mouse') return;
       e.preventDefault(); canvas.focus({ preventScroll: true }); unlock();
+      const r = canvas.getBoundingClientRect();
+      this.aim = { x: (e.clientX - r.left) / r.width * WORLD.width, y: (e.clientY - r.top) / r.height * WORLD.height }; this.touch = false;
       if (e.button === 0) { this.mouseAttack = true; this.attackPressed = true; }
       if (e.button === 2) this.mouseGuard = true;
     });
@@ -34,6 +36,7 @@ export class Input {
       if (e.button === 0) this.mouseAttack = false;
       if (e.button === 2) this.mouseGuard = false;
     });
+    window.addEventListener('pointercancel', e => { if (e.pointerType === 'mouse') { this.mouseAttack = false; this.mouseGuard = false; } });
     window.addEventListener('blur', () => this.clear());
     this.bindTouch();
   }
@@ -47,7 +50,7 @@ export class Input {
     }];
     const move = e => {
       if (e.pointerId !== stickId) return;
-      const r = stick.getBoundingClientRect(), dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);
+      const r = stick.getBoundingClientRect(), dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + 51); // Align with the visible stick centre, above the MOVE label.
       const len = Math.hypot(dx, dy), scale = Math.min(1, 36 / Math.max(1, len));
       this.stick = { x: dx * scale / 36, y: dy * scale / 36 };
       thumb.style.transform = `translate(${dx * scale}px, ${dy * scale}px)`;

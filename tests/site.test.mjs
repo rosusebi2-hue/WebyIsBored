@@ -55,7 +55,7 @@ test('news is readable without scripts and matches its editable source', () => {
   const posts = JSON.parse(read('assets/hub/news.json')), page = read('news/index.html');
   assert.equal((page.match(/<article /g) || []).length, posts.length);
   assert.equal(new Set(posts.map(p => p.id)).size, posts.length);
-  assert.equal(posts[0].version, '2.0');
+  assert.equal(posts[0].version, '2.1');
   for (const post of posts) { assert.ok(page.includes(`id="${post.id}"`)); assert.ok(page.includes(post.title)); }
   const before = page;
   execFileSync(process.execPath, ['scripts/build-news.mjs'], { cwd: root });
@@ -67,7 +67,7 @@ test('game modules compile, imports resolve, and all app element references exis
   for (const name of readdirSync(src).filter(n => n.endsWith('.js'))) {
     const file = resolve(src, name), source = readFileSync(file, 'utf8');
     execFileSync(process.execPath, ['--check', file]);
-    for (const [, path] of source.matchAll(/from ['"](\.[^'"]+)['"]/g)) assert.ok(existsSync(resolve(src, path)));
+    for (const [, path] of source.matchAll(/from ['"](\.[^'"]+)['"]/g)) assert.ok(existsSync(resolve(src, path.split('?')[0])));
     for (const [, id] of source.matchAll(/(?:\$|getElementById)\(['"]([^'"]+)['"]\)/g)) assert.ok(gameIds.has(id), `${name}: missing element #${id}`);
   }
   execFileSync(process.execPath, ['--check', resolve(root, 'assets/hub/hub.js')]);

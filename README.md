@@ -3,19 +3,27 @@
 A static browser arcade, published at **https://webyisbored.com/** through GitHub Pages.
 
 - `/` — playable games.
-- `/games/stick-and-swing/` — **Stick & Swing 2.0: The First Page**.
+- `/games/stick-and-swing/` — **Stick & Swing 2.1: The Adventure Update**.
 - `/news/` — releases, patches, and site updates.
 - `/coming-soon/` — clearly marked spaces for future games.
 
-## Stick & Swing: The First Page
+## Stick & Swing: The Adventure Update
 
-A new Canvas action game with a five-step practical tutorial, a four-room run, three enemy types, six possible run upgrades, and the two-phase Scribbled Brute. The player is Line, a forgotten sketch guided by the Margin. This is the first playable chapter, not the previous full campaign.
+**Version 2.1** is an eight-stop adventure across two chapters. Play as Line, an unfinished drawing guided by the Margin. Choose Scrapsteel (balanced counters), Pagebreaker (slow, wide, shield-breaking strikes), or Emberbrand (fast attacks and burning ink). All weapons are immediately available.
 
-Move with WASD or the arrow keys. Aim with the mouse. Hold left click to swing, right click or F to guard, and Shift to dash. Space attacks with aim assist. Tap guard just before impact to reflect projectiles and empower the next swing. Escape pauses. Touch devices have a movement stick, three action buttons, and nearest-enemy aim assist.
+Four forks offer regular or harder battles, and shops or recovery. Every branch advances once and merges at the next stop. Six combat stops use multiple waves, five arena layouts, five regular enemy types, and two bosses: the Scribbled Brute and the Ink Queen. Each boss has three telegraphed patterns and a second phase. Brief scenes introduce Nib and the abandoned sketchbook.
 
-Settings include sound, hold-to-attack, and reduced effects. Losing focus pauses the game. Completing a room presents one of three upgrades and restores health before continuing. A death can be retried from that room's checkpoint.
+Earn ink from defeated enemies and cleared battles. Nib offers two gifts and one health refill at each shop. Purchases are limited to that shop's stock, take effect immediately, and cannot be repeated. Free recovery restores up to 50 health. The five battle rewards each offer a choice of gifts and restore up to 16 health. There are fourteen gifts: eight shared and two exclusive to each weapon.
 
-Room entrances and pending reward choices are saved locally with a validated, versioned format. Personal best times and tutorial completion are also local. Saves do not transfer between browsers or domains. **Old game saves are incompatible with the remake**; old storage keys are not read or deleted. The old runtime, styles, story data, duplicated game folder, and obsolete navigation stylesheet have been removed. Git history preserves previous versions.
+Move with WASD or arrows. Aim with the mouse. Hold left click or Space to attack, right click or F to guard, and Shift to dash. Space uses aim assist. Tap guard just before impact to reflect shots and power your next hit. Guard interrupts a held swing immediately. Escape pauses; focus loss also pauses. Touch uses a movement stick and Swing, Guard and Dash buttons. Touch guard faces nearby incoming projectiles.
+
+Settings include sound, hold-to-attack and reduced effects. Review your current weapon and gifts from the build button or a between-encounter menu. Damage feedback and defeat explanations distinguish frontal blocks, hits around guard, guard breaks, and unblockable floor ink.
+
+### Saves and retries
+
+The validated version-3 checkpoint stores the weapon, route, seed, health, ink, build, and current decision. Route/story/rest/shop/reward screens resume exactly; shop stock and every purchase are saved together. Combat restarts from the encounter entrance and regenerates the same spawns. Retrying rolls back the encounter's currency, enemies cleared and inventory while keeping time, damage, parries and retry counts. Storage denial falls back to an in-memory checkpoint during the session.
+
+**Unfinished 2.0 runs cannot continue in the Adventure.** The new run key is `weby.stickSwing.run.v3`; 2.0 run keys are not read or deleted. Existing profile and settings keys are retained. First Page clear records stay separate from the new adventure clear count and best combat time. Saves stay on the current browser, device and origin.
 
 ## Development
 
@@ -33,7 +41,7 @@ Run the automated checks with Node 20 or later:
 node --test tests/*.test.mjs
 ```
 
-The checks exercise real combat simulation, input cancellation, tutorials, rewards, checkpoint restoration, route links, and news generation. They do not substitute for a browser playtest or first-time player feedback.
+The checks exercise combat simulation, all sixteen branch combinations with each weapon, input cancellation, tutorials, checkpoints, shop transactions, route links and news generation. A controller integration check exercises the actual menus and renderer calls with platform doubles. These are not browser or visual tests and do not substitute for a real playtest.
 
 The Pages workflow runs these checks before publishing. The game is split into configuration, pure simulation, rendering, input, audio, validated storage, and UI modules under `games/stick-and-swing/src/`.
 

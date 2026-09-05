@@ -1,5 +1,58 @@
 [
   {
+    "id": "stick-and-swing-2-1",
+    "date": "2026-09-05",
+    "type": "Release",
+    "game": "Stick & Swing",
+    "version": "2.1",
+    "title": "Three blades. Two pages. Your adventure.",
+    "summary": "The Adventure Update takes Line beyond the first page. Pick a weapon, choose where to fight and where to recover, spend your ink with Nib, and face the Ink Queen.",
+    "featured": true,
+    "sections": [
+      {
+        "title": "Choose how you fight",
+        "items": [
+          "Scrapsteel keeps a balanced three-hit combo, with gifts for faster swings and stronger perfect-block counters.",
+          "Pagebreaker trades speed for reach and impact. Its third strike breaks Warder shields; its signature gifts add a forward shockwave and a stronger finishing blow.",
+          "Emberbrand attacks quickly at close range and sets enemies alight. Develop longer burns or explosions when burning enemies fall.",
+          "Fourteen gifts: eight shared upgrades and two unique gifts for each weapon. Choices only offer gifts your weapon can use."
+        ]
+      },
+      {
+        "title": "A bigger journey",
+        "items": [
+          "Eight stops across two chapters, with four forks that always move you forward. Choose regular or harder battles, then decide between Nib’s shop and free recovery.",
+          "Multi-wave fights, five arena layouts, cover, and floor ink that warns before it becomes dangerous. Harder routes earn more ink.",
+          "One currency: ink. Shop prices, health refills, and immediate effects are visible before buying. Each item can be bought once at that stop.",
+          "Short story moments with Line, the Margin, Nib, and the Ink Queen connect the journey."
+        ]
+      },
+      {
+        "title": "Learn the new enemies",
+        "items": [
+          "Warders block blade hits from the front. Circle them, parry their slow swing, or break through with Pagebreaker’s third strike.",
+          "Blotters mark your location before dropping an ink pool. Leave the circle before it fills; floor ink cannot be blocked.",
+          "The Scribbled Brute guards the first page. The Ink Queen waits on the second, with quill fans, marked pools, radial volleys, and a second phase."
+        ]
+      },
+      {
+        "title": "A clearer fight, safer checkpoints",
+        "items": [
+          "Guard now interrupts a swing immediately, including while holding Swing on touch. Touch guard aims toward nearby incoming shots, and Dash shows its recharge on the button.",
+          "Damage feedback names what hit you. A defeat explains whether an attack passed your guard, broke it, or came from unguardable floor ink.",
+          "Inspect your weapon and gifts during a pause or between encounters. The end-of-run summary includes combat time, enemies cleared, perfect blocks, retries, ink earned, and damage taken.",
+          "Route decisions, story stops, unchosen gifts, recovery stops, shop stock, and purchases save immediately. Combat resumes at the encounter entrance; retries restore that entrance without duplicating ink or gifts."
+        ]
+      },
+      {
+        "title": "Returning from 2.0",
+        "paragraph": "The Adventure uses a new checkpoint format, so unfinished 2.0 runs begin a fresh adventure. Your settings, completed tutorial, and First Page clear records are kept. Adventure records are tracked separately. Saves remain on this browser and device."
+      }
+    ],
+    "link": "../games/stick-and-swing/",
+    "linkLabel": "Play The Adventure Update"
+  },
+  {
     "id": "stick-and-swing-2-0",
     "date": "2026-09-05",
     "type": "Release",
@@ -7,18 +60,26 @@
     "version": "2.0",
     "title": "A fresh page. A whole new fight.",
     "summary": "Stick & Swing has been rebuilt around a simple idea: read the attack, make your move, and make every swing count. The First Page is a complete short run with four rooms and one boss.",
-    "featured": true,
     "sections": [
-      { "title": "What’s new", "items": [
-        "A five-step playable tutorial for movement, sword combos, dashing, blocking, and perfect blocks. Practice is safe, and you can skip straight into a run.",
-        "A three-hit sword combo, optional hold-to-attack, clear enemy warnings, guard breaks, and reflected projectiles. Perfect blocks power up your next swing.",
-        "Three distinct enemies: the close-range Scrapper, charging Skitter, and ranged Spitter. Inkstones provide cover in the middle rooms.",
-        "The Scribbled Brute returns with charges, expanding shockwaves, projectile fans, and a faster second phase.",
-        "Choose a meaningful upgrade between rooms: longer reach, quicker dashes, a third-hit burst, stronger swings, more health, or healing perfect blocks.",
-        "Room checkpoints, saved reward choices, pause-on-focus-loss, touch controls with aim assist, and a reduced-effects setting."
-      ] },
-      { "title": "A new beginning", "paragraph": "This release replaces the previous Story and Wave modes, shop, and equipment systems. Old saves are not compatible with the remake; your first visit starts a new run. The First Page is the first playable chapter. More chapters and weapon styles will follow as the game grows." },
-      { "title": "A home for every update", "paragraph": "News now has its own page, and future game slots have moved to Coming Soon. The arcade homepage is dedicated to games you can play today." }
+      {
+        "title": "What’s new",
+        "items": [
+          "A five-step playable tutorial for movement, sword combos, dashing, blocking, and perfect blocks. Practice is safe, and you can skip straight into a run.",
+          "A three-hit sword combo, optional hold-to-attack, clear enemy warnings, guard breaks, and reflected projectiles. Perfect blocks power up your next swing.",
+          "Three distinct enemies: the close-range Scrapper, charging Skitter, and ranged Spitter. Inkstones provide cover in the middle rooms.",
+          "The Scribbled Brute returns with charges, expanding shockwaves, projectile fans, and a faster second phase.",
+          "Choose a meaningful upgrade between rooms: longer reach, quicker dashes, a third-hit burst, stronger swings, more health, or healing perfect blocks.",
+          "Room checkpoints, saved reward choices, pause-on-focus-loss, touch controls with aim assist, and a reduced-effects setting."
+        ]
+      },
+      {
+        "title": "A new beginning",
+        "paragraph": "This release replaces the previous Story and Wave modes, shop, and equipment systems. Old saves are not compatible with the remake; your first visit starts a new run. The First Page is the first playable chapter. More chapters and weapon styles will follow as the game grows."
+      },
+      {
+        "title": "A home for every update",
+        "paragraph": "News now has its own page, and future game slots have moved to Coming Soon. The arcade homepage is dedicated to games you can play today."
+      }
     ],
     "link": "../games/stick-and-swing/",
     "linkLabel": "Play The First Page"
@@ -31,7 +92,10 @@
     "title": "The arcade is open.",
     "summary": "WebyIsBored is now a home for a growing collection of browser games. Pick a game, jump in, and return to the arcade whenever you’re ready for something else.",
     "sections": [
-      { "title": "The starting lineup", "paragraph": "Stick & Swing is our first playable game. Three clearly marked spaces are reserved for future games. More to play as we build them." }
+      {
+        "title": "The starting lineup",
+        "paragraph": "Stick & Swing is our first playable game. Three clearly marked spaces are reserved for future games. More to play as we build them."
+      }
     ],
     "link": "../",
     "linkLabel": "Visit the arcade"

@@ -20,10 +20,11 @@ export class AudioEngine {
     if (now - (this.last[e.type] ?? -9) < .035) return;
     this.last[e.type] = now;
     const sounds = {
-      swing: [210 + (e.combo || 1) * 80, .12, 'triangle', .035, 70],
+      swing: [e.weapon === 'pagebreaker' ? 150 + (e.combo || 1) * 30 : e.weapon === 'emberbrand' ? 460 + (e.combo || 1) * 65 : 210 + (e.combo || 1) * 80, e.weapon === 'pagebreaker' ? .2 : .12, 'triangle', .035, 70],
       hit: [100, .08, 'triangle', .065, 40], kill: [220, .16, 'triangle', .035, 90],
       dash: [460, .15, 'sine', .025, 95], block: [155, .12, 'square', .025, 90],
       parry: [740, .28, 'sine', .06, 1108], hurt: [90, .2, 'sawtooth', .04, 40],
+      inkDrop: [180, .25, 'sine', .025, 55],
       shoot: [330, .08, 'triangle', .018, 165], slam: [75, .3, 'triangle', .075, 27],
       clear: [523, .3, 'sine', .05, 784], lessonComplete: [587, .22, 'sine', .04, 880],
       upgrade: [440, .25, 'sine', .04, 880], death: [150, .6, 'triangle', .05, 40],

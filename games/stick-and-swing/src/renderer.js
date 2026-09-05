@@ -1,4 +1,4 @@
-import { WORLD, TAU, clamp, distance } from './config.js';
+import { WORLD, TAU, WEAPONS, NODES, LAYOUTS, clamp, distance } from './config.js?v=2.1.0';
 const INK = '#dce7eb', MINT = '#9aefd9', GOLD = '#ffd088', RED = '#ff827d';
 export class Renderer {
   constructor(canvas, game, settings) {
@@ -27,7 +27,7 @@ export class Renderer {
     c.strokeRect(45, 45, 870, 510); c.strokeStyle = '#94b6bf18'; c.strokeRect(49, 49, 862, 502);
     c.strokeStyle = '#ff827d28'; c.beginPath(); c.moveTo(92, 45); c.lineTo(92, 555); c.stroke();
     c.font = '11px monospace'; c.fillStyle = '#91a8b050'; c.textAlign = 'left';
-    c.fillText('FINISH THIS SOMEDAY.', 64, 31); c.textAlign = 'right'; c.fillText('THE FIRST PAGE / 01', 896, 580);
+    c.fillText('FINISH THIS SOMEDAY.', 64, 31); c.textAlign = 'right'; c.fillText('LEAVE ROOM FOR SOMETHING NEW.', 896, 580);
     for (const [x, y, s] of [[65, 535, 1], [884, 69, 1], [883, 532, -1]]) {
       c.save(); c.translate(x, y); c.rotate(s * .17); c.strokeStyle = '#8b9fa73a';
       for (let i = 0; i < 4; i++) { c.beginPath(); c.moveTo(i * 5, 0); c.lineTo(i * 5 - 4, 14); c.stroke(); }
@@ -63,6 +63,8 @@ export class Renderer {
     c.drawImage(this.paper, 0, 0);
     c.save();
     if (this.shake > .1 && !this.settings.reduced) { c.translate((Math.random() - .5) * this.shake, (Math.random() - .5) * this.shake); this.shake *= Math.exp(-20 * dt); }
+    if (g.room >= 4) { c.fillStyle = '#8e5bad0b'; c.fillRect(50, 50, 860, 500); }
+    for (const h of g.hazards) this.hazard(h);
     for (const o of g.obstacles) this.obstacle(o);
     if (g.mode === 'tutorial' && g.target) this.target(g.target, g.lessonDone);
     for (const e of g.enemies) this.telegraph(e);
@@ -100,6 +102,15 @@ export class Renderer {
     }
     c.restore();
   }
+  hazard(h) {
+    const c = this.ctx, warning = h.warning > 0;
+    c.save(); c.fillStyle = warning ? '#ffd08812' : '#ca70be50'; c.strokeStyle = warning ? GOLD : '#e7a0da'; c.lineWidth = 2;
+    c.beginPath(); c.arc(h.x, h.y, h.radius, 0, TAU); c.fill();
+    if (warning) c.setLineDash([6, 7]); c.stroke(); c.setLineDash([]);
+    c.clip(); c.strokeStyle = warning ? '#ffd08830' : '#edb3df55'; c.lineWidth = 1;
+    for (let i = -h.radius * 2; i < h.radius * 2; i += 15) { c.beginPath(); c.moveTo(h.x - h.radius, h.y + i); c.lineTo(h.x + h.radius, h.y + i - h.radius * 2); c.stroke(); }
+    c.restore();
+  }
   target(t, done) {
     const c = this.ctx, pulse = this.settings.reduced ? 0 : Math.sin(this.time * 4) * 3;
     c.fillStyle = done ? '#9aefd933' : '#ffd08812'; c.strokeStyle = done ? MINT : GOLD; c.lineWidth = 2;
@@ -131,29 +142,35 @@ export class Renderer {
     const progress = 1 - clamp(e.stateTime / e.windup, 0, 1);
     c.strokeStyle = e.color; c.fillStyle = e.color + (progress > .7 ? '35' : '18'); c.lineWidth = 2;
     if (e.attack === 'charge') {
-      const length = e.type === 'brute' ? 350 : 225, width = e.radius + 9;
+      const length = e.type === 'brute' ? (e.phase === 2 ? 415 : 347) : 206, width = e.radius + 9;
       c.save(); c.translate(e.x, e.y); c.rotate(e.facing); c.fillRect(0, -width, length, width * 2); c.strokeRect(0, -width, length, width * 2);
       c.setLineDash([8, 7]); c.beginPath(); c.moveTo(0, 0); c.lineTo(length, 0); c.stroke(); c.setLineDash([]);
       c.beginPath(); c.moveTo(length - 16, -8); c.lineTo(length, 0); c.lineTo(length - 16, 8); c.stroke(); c.restore();
     }
-    if (e.attack === 'slash') {
-      c.beginPath(); c.moveTo(e.x, e.y); c.arc(e.x, e.y, 86, e.facing - 1.2, e.facing + 1.2); c.closePath(); c.fill(); c.stroke();
+    if (e.attack === 'slash' || e.attack === 'shieldSwing') {
+      c.beginPath(); c.moveTo(e.x, e.y); c.arc(e.x, e.y, e.attack === 'shieldSwing' ? 112 : 87, e.facing - 1.2, e.facing + 1.2); c.closePath(); c.fill(); c.stroke();
     }
     if (e.attack === 'slam') {
       c.beginPath(); c.arc(e.x, e.y, 285, 0, TAU); c.fill(); c.setLineDash([6, 9]); c.stroke(); c.setLineDash([]);
       c.beginPath(); c.arc(e.x, e.y, Math.max(2, 62 * (1 - progress)), 0, TAU); c.stroke();
     }
-    if (['shot', 'fan'].includes(e.attack)) {
-      const count = e.attack === 'fan' ? (e.phase === 2 ? 9 : 7) : 1;
+    if (e.attack === 'blot' || e.attack === 'blots') {
+      for (const target of e.targets || []) {
+        this.hazard({ ...target, warning: e.stateTime });
+        c.strokeStyle = GOLD; c.lineWidth = 2; c.beginPath(); c.arc(target.x, target.y, Math.max(2, target.radius * (1 - progress)), 0, TAU); c.stroke();
+      }
+    }
+    if (['shot', 'fan', 'quill', 'orbit'].includes(e.attack)) {
+      const count = e.attack === 'orbit' ? (e.phase === 2 ? 16 : 12) : e.attack === 'quill' ? (e.phase === 2 ? 11 : 7) : e.attack === 'fan' ? (e.phase === 2 ? 9 : 7) : 1;
       c.setLineDash([3, 8]);
-      for (let i = 0; i < count; i++) { const a = e.facing + (i - (count - 1) / 2) * .3; c.beginPath(); c.moveTo(e.x, e.y); c.lineTo(e.x + Math.cos(a) * 160, e.y + Math.sin(a) * 160); c.stroke(); }
+      for (let i = 0; i < count; i++) { const a = e.attack === 'orbit' ? e.facing + i * TAU / count : e.facing + (i - (count - 1) / 2) * (e.attack === 'quill' ? .22 : .3); c.beginPath(); c.moveTo(e.x, e.y); c.lineTo(e.x + Math.cos(a) * 160, e.y + Math.sin(a) * 160); c.stroke(); }
       c.setLineDash([]);
     }
     c.strokeStyle = progress > .78 ? '#fff1cf' : e.color; c.lineWidth = 3;
     c.beginPath(); c.arc(e.x, e.y, e.radius + 10, -Math.PI / 2, -Math.PI / 2 + progress * TAU); c.stroke();
-    c.font = 'bold 17px system-ui'; c.textAlign = 'center'; c.fillStyle = GOLD; c.fillText('!', e.x, e.y - (e.type === 'brute' ? 88 : 55));
+    c.font = 'bold 17px system-ui'; c.textAlign = 'center'; c.fillStyle = GOLD; c.fillText('!', e.x, e.y - (e.boss ? 88 : 55));
   }
-  figure(x, y, color, scale, facing, walk, sword = false, heavy = false) {
+  figure(x, y, color, scale, facing, walk, sword = false, heavy = false, weapon = 'scrapsteel') {
     const c = this.ctx, stride = Math.sin(walk) * 5;
     c.save(); c.translate(x, y); c.scale(scale, scale); c.strokeStyle = color; c.fillStyle = '#131e29';
     c.lineCap = 'round'; c.lineJoin = 'round'; c.lineWidth = heavy ? 6 : 3.5;
@@ -162,13 +179,26 @@ export class Renderer {
     c.moveTo(0, -11); c.lineTo(-13, -2 + stride * .25); c.moveTo(0, -11); c.lineTo(Math.cos(facing) * 18, -6 + Math.sin(facing) * 12); c.stroke();
     if (sword) {
       c.save(); c.translate(Math.cos(facing) * 19, -6 + Math.sin(facing) * 12); c.rotate(facing);
-      c.strokeStyle = GOLD; c.lineWidth = 3; c.beginPath(); c.moveTo(-3, 0); c.lineTo(25, 0); c.moveTo(2, -5); c.lineTo(2, 5); c.stroke(); c.restore();
+      c.strokeStyle = WEAPONS[weapon].color; c.lineWidth = weapon === 'pagebreaker' ? 7 : weapon === 'emberbrand' ? 2.5 : 3;
+      c.beginPath(); c.moveTo(-3, 0); c.lineTo(weapon === 'pagebreaker' ? 38 : weapon === 'emberbrand' ? 20 : 28, 0); c.moveTo(2, -5); c.lineTo(2, 5); c.stroke(); c.restore();
     }
     c.restore();
   }
   enemy(e) {
-    const c = this.ctx, heavy = e.type === 'brute', scale = heavy ? 1.85 : e.type === 'skitter' ? .92 : 1;
+    const c = this.ctx, heavy = e.type === 'brute', scale = heavy ? 1.85 : e.type === 'queen' ? 1.45 : e.type === 'warder' ? 1.2 : e.type === 'skitter' ? .92 : 1;
     c.fillStyle = '#02061165'; c.beginPath(); c.ellipse(e.x, e.y + 16 * scale, e.radius + 5, e.radius * .4, 0, 0, TAU); c.fill();
+    if (e.burn > 0) { c.strokeStyle = '#ffad78'; c.lineWidth = 2; c.setLineDash([3, 4]); c.beginPath(); c.arc(e.x, e.y, e.radius + 7, 0, TAU); c.stroke(); c.setLineDash([]); }
+    if (e.type === 'queen') {
+      c.strokeStyle = e.color; c.lineWidth = 3; c.beginPath();
+      c.moveTo(e.x - 20, e.y - 65); c.lineTo(e.x - 15, e.y - 81); c.lineTo(e.x - 5, e.y - 70); c.lineTo(e.x + 3, e.y - 87); c.lineTo(e.x + 12, e.y - 70); c.lineTo(e.x + 22, e.y - 78); c.lineTo(e.x + 20, e.y - 60); c.stroke();
+      c.fillStyle = e.phase === 2 ? '#d5a5ff25' : '#d5a5ff10'; c.beginPath(); c.ellipse(e.x, e.y + 14, 38, 15, 0, 0, TAU); c.fill();
+    }
+    if (e.type === 'warder' && ['approach', 'windup'].includes(e.state)) {
+      c.strokeStyle = '#8fcbff'; c.lineWidth = 7; c.beginPath(); c.arc(e.x, e.y, 33, e.facing - 1.25, e.facing + 1.25); c.stroke();
+    }
+    if (e.type === 'blotter') {
+      c.strokeStyle = e.color; c.fillStyle = '#df9cd933'; c.lineWidth = 2; c.beginPath(); c.arc(e.x + 20, e.y - 15, 13, 0, TAU); c.fill(); c.stroke();
+    }
     if (e.type === 'spitter') {
       c.save(); c.translate(e.x, e.y); c.rotate(e.facing); c.fillStyle = e.color; c.beginPath(); c.moveTo(24, 0); c.lineTo(8, -9); c.lineTo(8, 9); c.closePath(); c.fill(); c.restore();
     }
@@ -178,7 +208,7 @@ export class Renderer {
       for (let i = -3; i <= 3; i++) { c.beginPath(); c.moveTo(e.x - 17, e.y - 55 + i * 6); c.lineTo(e.x + 17, e.y - 44 + i * 6); c.stroke(); }
     }
     if (e.type === 'skitter') { c.strokeStyle = e.color; c.lineWidth = 2; c.beginPath(); c.moveTo(e.x - 10, e.y - 33); c.lineTo(e.x - 18, e.y - 49); c.moveTo(e.x + 7, e.y - 33); c.lineTo(e.x + 12, e.y - 47); c.stroke(); }
-    if (!heavy && !e.dummy && !e.trainer && e.hp < e.maxHp) {
+    if (!e.boss && !e.dummy && !e.trainer && e.hp < e.maxHp) {
       c.fillStyle = '#070e18'; c.fillRect(e.x - 19, e.y - 51, 38, 4); c.fillStyle = e.color; c.fillRect(e.x - 19, e.y - 51, 38 * e.hp / e.maxHp, 4);
     }
     if (e.dummy || e.trainer) { c.font = '12px monospace'; c.textAlign = 'center'; c.fillStyle = '#a7bac7'; c.fillText('PRACTICE', e.x, e.y - 56); }
@@ -190,7 +220,7 @@ export class Renderer {
     if (p.invulnerable > 0 && !p.dash && !this.settings.reduced) c.globalAlpha = .65 + Math.sin(this.time * 38) * .25;
     const color = p.flash > 0 ? RED : INK;
     const swingAngle = p.attack ? p.attack.angle + (p.attack.combo === 2 ? 1 : -1) * (1 - p.attack.age / p.attack.duration * 2) * 1.3 : p.facing;
-    this.figure(p.x, p.y, color, 1.12, swingAngle, title ? 0 : p.walk, !p.guarding);
+    this.figure(p.x, p.y, color, 1.12, swingAngle, title ? 0 : p.walk, !p.guarding, false, p.weapon);
     c.globalAlpha = 1;
     c.strokeStyle = MINT; c.lineWidth = 4; c.lineCap = 'round'; c.beginPath(); c.moveTo(p.x - 6, p.y - 21); c.lineTo(p.x + 7, p.y - 21); c.lineTo(p.x + 14 + Math.sin(this.time * 5) * 3, p.y - 11); c.stroke();
     if (p.counter > 0) { c.strokeStyle = MINT; c.lineWidth = 2; c.beginPath(); c.arc(p.x, p.y, 34, 0, TAU); c.stroke(); }
@@ -205,7 +235,7 @@ export class Renderer {
     if (p.attack) {
       const a = p.attack, fraction = a.age / a.duration;
       c.save(); c.globalAlpha = (1 - fraction) * .8; c.lineWidth = a.combo === 3 ? 16 : 10;
-      c.strokeStyle = a.combo === 3 ? MINT : GOLD; c.beginPath(); c.arc(p.x, p.y, a.range * .84, a.angle - a.arc / 2, a.angle + a.arc / 2); c.stroke();
+      c.strokeStyle = a.color; c.beginPath(); c.arc(p.x, p.y, a.range * .84, a.angle - a.arc / 2, a.angle + a.arc / 2); c.stroke();
       c.globalAlpha *= .25; c.lineWidth *= 2; c.stroke(); c.restore();
     }
   }
