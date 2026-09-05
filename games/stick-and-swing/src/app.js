@@ -424,6 +424,9 @@ function updateHUD() {
   const nodes = $('room-progress').children;
   for (let i = 0; i < nodes.length; i++) {
     nodes[i].hidden = game.runMode === 'practice' || i >= game.route.length;
+    const options = game.route[i] || [], named = options.length === 1 ? NODES[options[0]] : null;
+    nodes[i].classList.toggle('boss-node', !!named && (named.kind === 'boss' || !!named.champion));
+    nodes[i].setAttribute('aria-label', `${t('Stop {0}', { 0: i + 1 })}${named ? ' · ' + t(named.title) : ''}`);
     nodes[i].classList.toggle('active', inRun && i === game.room); nodes[i].classList.toggle('done', inRun && i < game.room);
     if (inRun && i === game.room) nodes[i].setAttribute('aria-current', 'step'); else nodes[i].removeAttribute('aria-current');
   }
