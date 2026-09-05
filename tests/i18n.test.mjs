@@ -60,7 +60,7 @@ test('every game description, story, gift, mastery task, event and journal entry
   const fields = new Set(['name', 'tag', 'description', 'detail', 'title', 'text', 'note', 'speaker', 'outro', 'label', 'alternate', 'alternateDescription']);
   const check = value => assert.ok(keys.has(value.toLowerCase()) || ['scrapsteel', 'pagebreaker', 'emberbrand'].includes(value.toLowerCase()), `Untranslated: ${value}`);
   function walk(value) { for (const [key, child] of Object.entries(value || {})) { if (fields.has(key) && typeof child === 'string') check(child); else if (child && typeof child === 'object') walk(child); } }
-  for (const name of ['WEAPONS', 'ENEMIES', 'NODES', 'LAYOUTS', 'UPGRADES', 'SHOP_HEAL', 'LESSONS', 'ABILITIES', 'FINISHERS', 'MASTERIES', 'SYNERGIES', 'EVENTS']) walk(config[name]);
+  for (const name of ['WEAPONS', 'ENEMIES', 'NODES', 'LAYOUTS', 'UPGRADES', 'SHOP_HEAL', 'LESSONS', 'ABILITIES', 'FINISHERS', 'MASTERIES', 'SYNERGIES', 'EVENTS', 'KEEPSAKES', 'MEMORIES']) walk(config[name]);
   for (const entry of Object.values(config.JOURNAL)) check(entry);
 });
 test('all current and archived news is translated, with separate website and game announcements', () => {
@@ -68,6 +68,6 @@ test('all current and archived news is translated, with separate website and gam
   for (const post of posts) for (const value of [post.type, post.title, post.summary, post.linkLabel, ...post.sections.flatMap(s => [s.title, s.paragraph, ...(s.items || [])])].filter(Boolean)) assert.ok(keys.has(value), `Untranslated news: ${value}`);
   assert.equal(posts.find(p => p.id === 'website-languages').game, 'WebyIsBored'); assert.equal(posts.find(p => p.id === 'stick-and-swing-2-2').version, '2.2');
   for (const path of ['index.html', 'news/index.html', 'coming-soon/index.html', 'games/stick-and-swing/index.html']) {
-    const html = read(path); assert.match(html, /data-language-slot/); assert.match(html, /i18n\/catalog\.js\?v=1\.1\.0/); assert.ok(html.indexOf('i18n/catalog.js') < html.indexOf('i18n/i18n.js'));
+    const html = read(path); assert.match(html, /data-language-slot/); assert.match(html, /i18n\/catalog\.js\?v=1\.2\.0/); assert.ok(html.indexOf('i18n/catalog.js') < html.indexOf('i18n/i18n.js'));
   }
 });

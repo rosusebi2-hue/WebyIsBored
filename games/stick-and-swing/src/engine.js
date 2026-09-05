@@ -1,5 +1,5 @@
-import { WORLD, TAU, ENEMIES, ROUTE, RUSH_ROUTE, NODES, LAYOUTS, WEAPONS, LESSONS, EVENTS, SHOP_HEAL, giftPrice, availableUpgrades, freshStats, masteryEmpty, createPlayer, clamp, distance, angleDelta } from './config.js?v=2.2.0';
-import { validateCheckpoint } from './storage.js?v=2.2.0';
+import { WORLD, TAU, ENEMIES, ROUTE, RUSH_ROUTE, CHAPTER_ROUTE, NODES, LAYOUTS, WEAPONS, LESSONS, EVENTS, SHOP_HEAL, giftPrice, availableUpgrades, freshStats, masteryEmpty, createPlayer, clamp, distance, angleDelta } from './config.js?v=2.3.0';
+import { validateCheckpoint } from './storage.js?v=2.3.0';
 
 export const idleInput = () => ({ moveX: 0, moveY: 0, attackHeld: false, attackPressed: false, guardHeld: false, dashPressed: false, abilityPressed: false, aimX: null, aimY: null, autoAim: true });
 const point = (x, y) => ({ x, y });
@@ -26,21 +26,37 @@ export class Game {
     this.eventsSeen = []; this.eventId = null; this.afterReward = 'route'; this.initialSeed = 1; this.runId = 'new';
     this.props = []; this.bursts = []; this.resetProgress();
   }
-  get route() { return this.runMode === 'rush' ? RUSH_ROUTE : ROUTE; }
+  get route() { return this.runMode === 'rush' ? RUSH_ROUTE : this.runMode === 'chapter' ? CHAPTER_ROUTE : ROUTE; }
   get currentNode() { return this.runMode === 'practice' ? this.practiceNode : NODES[this.encounter === 'secret' ? 'secret-duel' : this.node]; }
-  resetProgress() { this.pendingMastery = masteryEmpty(); this.pendingDiscovered = new Set(); this.pendingRescued = []; }
-  progressDelta() { return { weapon: this.weapon, mastery: { ...this.pendingMastery }, discovered: [...this.pendingDiscovered], rescued: [...this.pendingRescued] }; }
+  resetProgress() { this.pendingMastery = masteryEmpty(); this.pendingDiscovered = new Set(); this.pendingRescued = []; this.pendingMemories = []; }
+  progressDelta() { return { weapon: this.weapon, mastery: { ...this.pendingMastery }, discovered: [...this.pendingDiscovered], rescued: [...this.pendingRescued], memories: [...this.pendingMemories] }; }
   count(metric, amount = 1) { if (this.mode === 'combat' && this.runMode !== 'practice') this.pendingMastery[metric] += amount; }
   emit(type, data = {}) { this.events.push({ type, ...data }); }
   drainEvents() { return this.events.splice(0); }
+  record(event, details = {}) {
+    (this.trace ||= []).push({ event, at: Math.round(this.stats?.time || 0), ...details });
+    if (this.trace.length > 60) this.trace.shift();
+  }
+  updateObjectives() {
+    for (const f of this.fragments) {
+      if (f.collected || f.secret && this.props.some(o => o.hp > 0 && distance(o, f) < 40)) continue;
+      if (distance(this.player, f) < 38) {
+        f.collected = true;
+        this.emit('fragment', { x: f.x, y: f.y });
+        this.emit('note', { text: f.secret ? 'A hidden memory. Clear the page to keep it.' : 'A piece of Rook. Keep looking for the others.' });
+      }
+    }
+  }
   random() {
     this.seed = (Math.imul(this.seed, 1664525) + 1013904223) >>> 0;
     return this.seed / 4294967296;
   }
-  changeMode(mode) { this.mode = mode; this.emit('mode', { mode }); }
+  changeMode(mode) { this.mode = mode; this.record('screen', { mode, node: this.node }); this.emit('mode', { mode }); }
   startNew(tutorial = false, seed = Date.now() >>> 0, weapon = 'scrapsteel', runMode = 'adventure') {
-    if (!Object.hasOwn(WEAPONS, weapon) || !['adventure', 'rush'].includes(runMode)) return false;
+    if (!Object.hasOwn(WEAPONS, weapon) || !['adventure', 'rush', 'chapter'].includes(runMode)) return false;
     this.runMode = runMode; this.encounter = 'main'; this.forms = { ...this.store.profile().loadouts[weapon] };
+    this.keepsake = runMode === 'chapter' ? this.store.profile().keepsake : null;
+    this.trace = []; this.record('start', { mode: runMode, weapon });
     this.eventsSeen = []; this.eventId = null; this.afterReward = 'route'; this.lastHit = null; this.resetProgress();
     this.seed = (seed >>> 0) || 1; this.initialSeed = this.seed; this.runId = `${Date.now().toString(36)}-${this.seed.toString(36)}`;
     this.weapon = weapon; this.upgrades = runMode === 'rush' ? ['edge', 'heart', 'dash'] : []; this.ink = 0;
@@ -57,6 +73,7 @@ export class Game {
     this.wave = 0; this.waveDelay = 0; this.banner.time = 0;
     this.player.attack = null; this.player.guarding = false; this.player.dash = 0;
     this.props = []; this.bursts = []; this.sweepCycle = -1;
+    this.fragments = []; this.exitReady = false; this.dashHits = new Set();
   }
   setupLesson() {
     this.resetArena();
@@ -72,10 +89,11 @@ export class Game {
       this.player.x = 315; this.player.y = 350; this.player.facing = 0;
       this.target = point(475, 350);
     }
-    if (this.lesson >= 3) {
+    if (this.lesson === 3 || this.lesson === 4) {
       this.player.x = 480; this.player.y = 420; this.target = null;
       const trainer = this.spawn('spitter', 480, 135, 0); trainer.trainer = true; trainer.cooldown = 1;
     }
+    if (this.lesson === 5) { this.target = null; this.player.facing = 0; this.spawn('scrapper', this.player.x + 65, this.player.y, 0).dummy = true; }
     this.banner = { ...LESSONS[this.lesson], time: 0 };
     this.emit('lesson', { lesson: this.lesson });
   }
@@ -96,6 +114,7 @@ export class Game {
     return { version: 4, phase, room: this.room, node: this.node, path: [...this.path], weapon: this.weapon,
       ink: this.ink, upgrades: [...this.upgrades], hp: Math.max(1, this.player.hp), seed: this.seed || 1, stats: { ...this.stats },
       runMode: this.runMode, encounter: this.encounter, forms: { ...this.forms }, initialSeed: this.initialSeed, runId: this.runId,
+      keepsake: this.keepsake || null,
       eventsSeen: [...this.eventsSeen], eventId: phase === 'event' ? this.eventId : null, afterReward: this.afterReward,
       ...(phase === 'reward' ? { choices: [...this.choices] } : {}),
       ...(phase === 'shop' ? { stock: [...this.stock], purchased: [...this.purchased] } : {}) };
@@ -112,6 +131,7 @@ export class Game {
     const value = validateCheckpoint(raw);
     if (!value) return false;
     this.runMode = value.runMode; this.encounter = value.encounter; this.forms = { ...value.forms };
+    this.keepsake = value.keepsake; this.record('restore', { node: value.node, phase: value.phase });
     this.initialSeed = value.initialSeed; this.runId = value.runId; this.eventsSeen = [...value.eventsSeen]; this.eventId = value.eventId; this.afterReward = value.afterReward;
     this.resetProgress();
     this.seed = value.seed; this.weapon = value.weapon; this.upgrades = [...value.upgrades]; this.stats = { ...value.stats };
@@ -162,6 +182,8 @@ export class Game {
     this.obstacles = layout.obstacles.map(o => ({ ...o })); this.floorPools = layout.pools.map(o => ({ ...o, lastCycle: -1 }));
     this.props = (layout.props || []).map(o => ({ ...o, id: `prop-${this.nextId++}`, hp: o.type === 'barrel' ? 20 : 50, maxHp: o.type === 'barrel' ? 20 : 50 }));
     this.sweepingInk = !!layout.sweep;
+    if (node.objective === 'fragments') this.fragments = [[180, 215], [480, 180], [780, 395]].map(([x, y]) => ({ x, y, collected: false }));
+    if (node.objective === 'secret') this.fragments = [{ x: 700, y: 170, collected: false, secret: true }];
     this.changeMode('combat'); this.save(); // Save before seeded spawns, so retries reproduce the entrance.
     this.spawnWave();
     this.banner = { title: node.title, text: node.note, time: 4.5 };
@@ -172,6 +194,8 @@ export class Game {
     node.waves[this.wave].forEach((type, i) => {
       const [x, y] = ENEMIES[type].boss ? [480, 165] : positions[i % positions.length];
       const e = this.spawn(type, x + (ENEMIES[type].boss ? 0 : this.random() * 24 - 12), y, 1.1 + i * .35);
+      if (node.champion?.type === type && this.wave === 0 && i === 0) Object.assign(e, { hp: node.champion.hp, maxHp: node.champion.hp, name: node.champion.name, champion: true, ink: 20, radius: e.radius + 5 });
+      if (this.runMode === 'chapter' && this.node === 'eraser') { e.chapterBoss = true; e.hp = e.maxHp = 1500; }
       if (this.runMode === 'practice' && e.boss && this.practiceOptions.phase === 2) { e.hp = e.maxHp * .49; e.phase = 2; }
     });
     this.clearTimer = 0;
@@ -252,7 +276,7 @@ export class Game {
     if (!Object.hasOwn(ENEMIES, enemy) || !Object.hasOwn(WEAPONS, weapon)) return false;
     this.practiceOptions = { enemy, weapon, phase: phase === 2 ? 2 : 1, invincible: !!invincible, ranges: !!ranges };
     this.runMode = 'practice'; this.encounter = 'main'; this.weapon = weapon; this.forms = { ...this.store.profile().loadouts[weapon] };
-    this.upgrades = []; this.stats = freshStats(); this.ink = 0; this.resetProgress();
+    this.upgrades = []; this.keepsake = null; this.stats = freshStats(); this.ink = 0; this.resetProgress();
     this.practiceNode = { title: 'Practice arena', note: 'Experiment freely. Your adventure is kept safe.', layout: 'open', waves: [[enemy]], reward: 0, chapter: 1 };
     this.player = createPlayer([], undefined, weapon); this.enterCombat(); return true;
   }
@@ -265,10 +289,17 @@ export class Game {
   }
   roomCleared() {
     if (this.mode !== 'combat') return;
+    if (this.runMode === 'chapter' && this.currentNode.objective === 'fragments' && this.fragments.some(f => !f.collected)) return false;
+    if (this.runMode === 'chapter') {
+      if (this.node === 'rook') this.pendingMemories.push('rook');
+      if (this.node === 'sealed-vault' && this.fragments.some(f => f.collected)) this.pendingMemories.push('vault');
+      if (this.node === 'eraser') this.pendingMemories.push('home');
+    }
+    this.record('clear', { node: this.node, hp: Math.ceil(this.player.hp), seconds: Math.round(this.roomClock) });
     this.projectiles = []; this.rings = []; this.hazards = []; this.player.attack = null;
     if (this.runMode === 'practice') { this.changeMode('practiceResult'); return; }
     this.addInk(this.currentNode.reward);
-    if (this.node === 'knight' && this.encounter === 'main') {
+    if (['knight', 'eraser'].includes(this.node) && this.encounter === 'main') {
       this.finishAttempt(true); this.checkpoint = null;
       this.changeMode('victory'); this.emit('victory'); return;
     }
@@ -277,6 +308,7 @@ export class Game {
     const ordered = this.shuffle(available), signature = ordered.find(u => u.weapon);
     this.choices = ordered.slice(0, 3).map(u => u.id);
     if (signature && !this.choices.includes(signature.id)) this.choices[this.choices.length - 1] = signature.id;
+    if (this.runMode === 'chapter' && this.node === 'wake') this.choices = ['afterimage', 'rebound', 'inkblades'];
     if (this.encounter === 'secret' && !this.upgrades.includes('seal')) this.choices = ['seal'];
     this.afterReward = this.runMode === 'adventure' && this.encounter === 'main' && [1, 4, 7, 9].includes(this.room) ? 'event' : 'route';
     this.changeMode('reward'); this.save(); this.emit('clear');
@@ -297,11 +329,12 @@ export class Game {
     if (this.mode === 'combat') this.stats.time += dt;
     if (this.banner.time > 0) this.banner.time -= dt;
     this.updatePlayer(dt, input);
+    if (this.runMode === 'chapter' && this.mode === 'combat') this.updateObjectives();
     for (const e of this.enemies) if (e.hp > 0) this.updateEnemy(e, dt);
     this.resolveSwing();
     this.updateProjectiles(dt);
     this.updateRings(dt);
-    if (this.mode === 'combat') this.updateHazards(dt);
+    if (this.mode === 'combat' && !this.exitReady) this.updateHazards(dt);
     this.enemies = this.enemies.filter(e => e.hp > 0);
     if (this.mode === 'tutorial') {
       if (this.lesson === 0 && distance(this.player, this.target) < 48) this.completeLesson();
@@ -317,7 +350,12 @@ export class Game {
       this.clearTimer += dt;
       if (this.clearTimer > 1.2) {
         if (this.wave + 1 < this.currentNode.waves.length) { this.wave++; this.spawnWave(); }
-        else this.roomCleared();
+        else if (this.runMode === 'chapter' && this.node !== 'eraser') {
+          if (!this.fragments.some(f => !f.secret && !f.collected)) {
+            if (!this.exitReady) { this.exitReady = true; this.hazards = []; this.rings = []; this.projectiles = []; this.emit('note', { text: 'Page clear. Walk into the doorway to continue.' }); }
+            if (distance(this.player, { x: 480, y: 95 }) < 48) this.roomCleared();
+          }
+        } else this.roomCleared();
       }
     }
   }
@@ -340,6 +378,8 @@ export class Game {
       const angle = magnitude > .1 ? Math.atan2(my, mx) : p.facing;
       p.dashX = Math.cos(angle); p.dashY = Math.sin(angle); p.dash = .19; p.dashCd = p.dashCooldown;
       p.invulnerable = .23; p.guarding = false; p.attack = null;
+      this.dashHits = new Set();
+      if (p.afterimage) this.bursts.push({ x: p.x, y: p.y, radius: 85, delay: .45, damage: 28 });
       p.momentumTime = p.momentum ? 1.5 : 0;
       if (p.cinderstep) this.hazards.push({ x: p.x, y: p.y, radius: 43, warning: 0, life: 1.5, tick: 0, friendly: true, damage: 6 });
       this.emit('dash', { x: p.x, y: p.y, angle });
@@ -360,6 +400,9 @@ export class Game {
       this.moveBody(p, p.vx * dt, p.vy * dt);
     }
     p.walk += Math.hypot(p.vx, p.vy) * dt / 28;
+    if (this.keepsake === 'thread' && p.dash > 0) for (const e of this.enemies) {
+      if (e.hp > 0 && e.spawn <= 0 && !this.dashHits.has(e.id) && distance(p, e) < 48 + e.radius) { this.dashHits.add(e.id); this.hurtEnemy(e, 18, p.facing, 'thread'); }
+    }
     if (p.skillRush > 0) {
       for (const e of this.enemies) if (e.hp > 0 && !e.spawn && !p.skillHits.has(e.id) && distance(p, e) < 72 + e.radius) {
         p.skillHits.add(e.id); this.hurtEnemy(e, 40 * (p.needle ? 1.5 : 1), p.facing, 'ability');
@@ -409,6 +452,11 @@ export class Game {
       a.wave = true;
       this.projectiles.push({ x: p.x, y: p.y, vx: Math.cos(a.angle) * 520, vy: Math.sin(a.angle) * 520, radius: 13, damage: 32 * p.damage, friendly: true, life: .65, color: '#ffd088' });
     }
+    if (a.combo === 3 && !a.inscribed && a.age > .12) {
+      a.inscribed = true;
+      if (p.inkblades) for (const offset of [-.35, .35]) this.abilityShot(a.angle + offset, 18, 430);
+      if (this.keepsake === 'quill') this.abilityShot(a.angle, 22, 520);
+    }
     if (p.echo && a.combo === 3 && !a.echo && a.age > .12) {
       a.echo = true;
       this.emit('burst', { x: p.x, y: p.y, radius: 150, color: '#9aefd9' });
@@ -452,7 +500,7 @@ export class Game {
         }
       }
     }
-    if (source === 'sword' || source === 'heavy') this.hitStop = Math.max(this.hitStop, .035);
+    if (source === 'sword' || source === 'heavy') this.hitStop = Math.max(this.hitStop, source === 'heavy' ? .065 : .035);
     this.emit('hit', { x: e.x, y: e.y, color: source === 'fire' ? '#ffad78' : e.color, damage: Math.round(damage) });
   }
   hurtPlayer(damage, from, source = 'Ink', attacker = null, blockable = true) {
@@ -467,7 +515,9 @@ export class Game {
         this.count('parries'); if (p.tempo) p.abilityCd = Math.max(0, p.abilityCd - 2);
         if (attacker && attacker.type !== 'spitter') { attacker.state = 'recover'; attacker.stateTime = 1.4; attacker.stun = 0; }
         this.emit('parry', { x: p.x, y: p.y });
-        if (this.mode === 'tutorial' && this.lesson >= 3) this.completeLesson();
+        this.hitStop = Math.max(this.hitStop, .055);
+        if (this.keepsake === 'bell') this.areaDamage(p.x, p.y, 150, 24, 'bell');
+        if (this.mode === 'tutorial' && (this.lesson === 3 || this.lesson === 4)) this.completeLesson();
         return 'parried';
       }
       p.guard = Math.max(0, p.guard - damage * 2 * p.guardCost); p.guardDelay = .65; p.invulnerable = .12;
@@ -487,6 +537,7 @@ export class Game {
     p.hp = Math.max(0, p.hp - damage); p.flash = .25; p.invulnerable = .65; p.combo = 0;
     this.stats.damageTaken += actualDamage;
     this.lastHit = { source, damage, reason: !blockable ? 'Ink on the floor cannot be blocked. Move out of its warning circle or dash through it.' : p.broken > 0 ? 'Your guard was broken. Release it between attacks to recover.' : p.guarding ? 'The hit came around your guard. Face the attacker before blocking.' : 'Step out of the marked attack, dash through it, or face it and block.' };
+    this.record('hit', { source, damage, hp: p.hp });
     this.emit('hurt', { x: p.x, y: p.y, damage, source });
     if (p.hp === 0) { this.deathSource = source; this.finishAttempt(false); this.changeMode('death'); this.emit('death'); }
     return 'hit';
@@ -495,6 +546,7 @@ export class Game {
     const p = this.player;
     if (!['combat', 'tutorial'].includes(this.mode) || p.abilityCd > 0 || p.broken > 0 || p.dash > 0) return false;
     p.abilityCd = p.abilityCooldown; p.attack = null; p.guarding = false;
+    if (this.mode === 'tutorial' && this.lesson === 5) this.completeLesson();
     const alternate = this.forms.ability === 'alternate';
     if (p.weapon === 'scrapsteel') {
       if (alternate) {
@@ -505,7 +557,7 @@ export class Game {
         p.guard = Math.min(p.maxGuard, p.guard + 20); p.counter = p.counterTime; p.invulnerable = .2;
         this.emit('burst', { x: p.x, y: p.y, radius: 180, color: '#9aefd9' });
       } else {
-        p.skillRush = .24; p.skillHits.clear(); p.dash = .2; p.dashX = Math.cos(p.facing); p.dashY = Math.sin(p.facing); p.invulnerable = .26;
+        p.skillRush = .24; p.skillHits.clear(); this.dashHits = new Set(); p.dash = .2; p.dashX = Math.cos(p.facing); p.dashY = Math.sin(p.facing); p.invulnerable = .26;
       }
     } else if (p.weapon === 'pagebreaker') {
       if (alternate) for (let i = -1; i <= 1; i++) this.abilityShot(p.facing + i * .23, 22, 450, false, true);
@@ -535,6 +587,7 @@ export class Game {
   beginWindup(e, attack, duration, angle) {
     e.state = 'windup'; e.attack = attack; e.windup = duration; e.stateTime = duration;
     e.facing = angle; e.hit = false;
+    if (attack === 'redact') e.targets = [110, 210, 310, 410, 510].map(y => ({ x: clamp(this.player.x, 150, 810), y, radius: 60 }));
     if (attack === 'blot' || attack === 'blots') {
       const offsets = attack === 'blot' ? [[0, 0]] : e.phase === 2 ? [[0, 0], [-125, 0], [125, 0], [0, -120], [0, 120]] : [[0, 0], [-125, -60], [125, 60]];
       e.targets = offsets.map(([x, y]) => ({ x: clamp(this.player.x + x, 110, 850), y: clamp(this.player.y + y, 110, 490), radius: attack === 'blot' ? 62 : 56 }));
@@ -589,7 +642,7 @@ export class Game {
         this.emit('bossPhase'); return;
       }
       if (!e.cooldown) {
-        const sequence = e.type === 'queen' ? ['quill', 'blots', 'orbit'] : e.type === 'knight' ? ['thrust', 'doubleSlash', 'fan', 'slam'] : e.type === 'palimpsest' ? ['charge', 'blots', 'fan'] : ['charge', 'slam', 'fan'];
+        const sequence = e.chapterBoss && e.phase === 2 ? ['charge', 'redact', 'slam', 'fan'] : e.type === 'queen' ? ['quill', 'blots', 'orbit'] : e.type === 'knight' ? ['thrust', 'doubleSlash', 'fan', 'slam'] : e.type === 'palimpsest' ? ['charge', 'blots', 'fan'] : ['charge', 'slam', 'fan'];
         const attack = sequence[e.pattern++ % sequence.length];
         e.stance = e.type === 'knight' ? (e.pattern % 2 ? 'shield' : 'sword') : null;
         this.beginWindup(e, attack, e.type === 'queen' ? 1.2 : e.phase === 2 ? .95 : 1.2, angle); return;
@@ -661,6 +714,10 @@ export class Game {
       for (const t of e.targets) this.hazards.push({ ...t, warning: 0, life: 3, damage: e.damage, source: `${e.name}’s ink pool`, ownerId: e.id });
       e.targets = []; this.emit('inkDrop');
     }
+    if (e.attack === 'redact') {
+      for (const target of e.targets) this.hazards.push({ ...target, warning: 0, life: 1.2, damage: 24, source: 'Erasure ink' });
+      e.targets = []; e.stateTime = 2; this.emit('inkDrop');
+    }
     if (e.attack === 'quill' || e.attack === 'orbit') {
       const radial = e.attack === 'orbit', count = radial ? (e.phase === 2 ? 16 : 12) : (e.phase === 2 ? 11 : 7);
       for (let i = 0; i < count; i++) this.shoot(e, radial ? e.facing + i * TAU / count : e.facing + (i - (count - 1) / 2) * .22, radial ? 195 : 250);
@@ -701,6 +758,7 @@ export class Game {
         if (result === 'parried') {
           const a = owner ? Math.atan2(owner.y - q.y, owner.x - q.x) : Math.atan2(-q.vy, -q.vx);
           q.vx = Math.cos(a) * 480; q.vy = Math.sin(a) * 480; q.friendly = true; q.damage = 36; q.color = '#9aefd9'; q.life = 2;
+          if (this.player.rebound) { q.damage *= 1.5; q.pierce = true; q.hits = new Set(); }
         } else q.life = 0;
       }
     }

@@ -1,4 +1,6 @@
-export const VERSION = '2.2.0';
+import { CHAPTER_NODES } from './chapter.js?v=2.3.0';
+export { CHAPTER_ROUTE, KEEPSAKES, MEMORIES, keepsakeUnlocked } from './chapter.js?v=2.3.0';
+export const VERSION = '2.3.0';
 export const WORLD = { width: 960, height: 600, inset: 46 };
 export const TAU = Math.PI * 2;
 export const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
@@ -28,6 +30,7 @@ export const ENEMIES = {
 export const ROUTE = [['first'], ['archive', 'trial'], ['nib', 'shelter'], ['brute'], ['spillway'], ['gallery', 'gauntlet'], ['last-shop', 'last-rest'], ['queen'], ['binding', 'crease'], ['stitches', 'foundry'], ['bind-shop', 'bind-rest'], ['knight']];
 export const RUSH_ROUTE = [['brute'], ['queen'], ['knight']];
 export const NODES = {
+  ...CHAPTER_NODES,
   first: { title: 'The first line', kind: 'combat', chapter: 1, layout: 'open', note: 'Clear two waves. Red ink swings; purple ink lunges.', reward: 12, waves: [['scrapper', 'scrapper', 'scrapper'], ['skitter', 'scrapper', 'spitter']], story: { speaker: 'THE MARGIN', title: 'The page remembers.', text: 'The Artist left you unfinished, Line. But something has started drawing in the dark. Follow the fresh ink. Find out who is holding the pen.' } },
   archive: { title: 'The torn archive', kind: 'combat', chapter: 1, layout: 'columns', note: 'Blue Warders block the front. Circle behind them or parry their swing.', reward: 16, waves: [['warder', 'scrapper', 'spitter'], ['warder', 'skitter', 'spitter']] },
   trial: { title: 'Red-ink challenge', kind: 'elite', chapter: 1, layout: 'crossing', note: 'Three waves. Extra ink. Keep moving when the floor starts to fill.', reward: 36, waves: [['skitter', 'spitter', 'scrapper'], ['warder', 'skitter', 'spitter'], ['warder', 'scrapper', 'skitter']] },
@@ -53,6 +56,9 @@ export const NODES = {
 const stone = (x, y, radius = 36) => ({ x, y, radius });
 const pool = (x, y, radius = 53, offset = 0) => ({ x, y, radius, offset });
 export const LAYOUTS = {
+  courtyard: { name: 'The pencil courtyard', obstacles: [stone(300, 300, 40), stone(660, 300, 40)], pools: [], props: [{ x: 480, y: 245, radius: 24, type: 'cover' }] },
+  'archive-room': { name: 'Rook’s scattered wings', obstacles: [stone(340, 300, 40), stone(620, 300, 40)], pools: [] },
+  'eraser-room': { name: 'The road home', obstacles: [], pools: [], props: [{ x: 250, y: 295, radius: 26, type: 'cover' }, { x: 710, y: 295, radius: 26, type: 'cover' }] },
   open: { name: 'An open page', obstacles: [], pools: [] },
   columns: { name: 'The archive', obstacles: [stone(310, 215), stone(650, 395), stone(680, 195, 28)], pools: [] },
   crossing: { name: 'Red-ink crossing', obstacles: [stone(310, 300, 42), stone(650, 300, 42)], pools: [pool(480, 210, 57), pool(480, 390, 57, 3)] },
@@ -67,6 +73,9 @@ export const LAYOUTS = {
 
 };
 export const UPGRADES = [
+  { id: 'rebound', icon: '◇', name: 'Return to sender', tag: 'PARRY', description: 'Reflected shots pierce enemies and deal 50% more damage.' },
+  { id: 'inkblades', icon: '〃', name: 'Split sentence', tag: 'COMBO', description: 'Every third swing fires two 18-damage ink blades at an angle.' },
+  { id: 'afterimage', icon: '»', name: 'Leave a mark', tag: 'DASH', description: 'Dashing leaves a mark that bursts after a moment for 28 damage.' },
   { id: 'reach', icon: '↗', name: 'A longer line', tag: 'REACH', description: 'Your blade reaches 22% farther.' },
   { id: 'dash', icon: '»', name: 'Quick sketch', tag: 'DASH', description: 'Dash recharges 30% faster: 0.77 seconds instead of 1.1.' },
   { id: 'echo', icon: '✳', name: 'Third impression', tag: 'COMBO', description: 'Your third swing adds a 14-damage burst around you.' },
@@ -104,12 +113,14 @@ export const LESSONS = [
   { title: 'Cross it out', text: 'Dash into the glowing circle. You are safe during a dash.', hint: 'Move toward the circle and press Shift · or tap Dash' },
   { title: 'Hold your ground', text: 'Face the practice drawing and hold guard to stop a shot.', hint: 'Hold right click or F · or hold Guard' },
   { title: 'Perfect timing', text: 'Release guard, then tap it just before a shot reaches you. Watch for the blue ring.', hint: 'A perfect block reflects the shot and powers your next swing.' },
+  { title: 'Your signature move', text: 'Use your ability. Each weapon has its own move; the purple meter shows its recharge.', hint: 'Press Q · or tap Ability' },
 ];
 export const freshStats = () => ({ time: 0, kills: 0, parries: 0, damageTaken: 0, inkEarned: 0, spent: 0, retries: 0, bosses: 0 });
 export function playerStats(upgrades = [], weapon = 'scrapsteel') {
   return { weapon, maxHp: 100 + (upgrades.includes('heart') ? 25 : 0) + (upgrades.includes('seal') ? 15 : 0), damage: upgrades.includes('edge') ? 1.25 : 1,
     reach: upgrades.includes('reach') ? 1.22 : 1, dashCooldown: upgrades.includes('dash') ? .77 : 1.1,
     echo: upgrades.includes('echo'), healParry: upgrades.includes('parry') ? 6 : 0,
+    rebound: upgrades.includes('rebound'), inkblades: upgrades.includes('inkblades'), afterimage: upgrades.includes('afterimage'),
     guardCost: upgrades.includes('guard') ? .65 : 1, armor: upgrades.includes('armor') ? .85 : 1,
     counterMultiplier: upgrades.includes('riposte') ? 2.2 : 1.65, attackSpeed: upgrades.includes('flurry') ? .78 : 1,
     burnDuration: upgrades.includes('kindling') ? 4 : 2, burnDamage: upgrades.includes('kindling') ? 10 : 7,

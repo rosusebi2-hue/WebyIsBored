@@ -4,14 +4,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#0b1018">
-  <meta name="description" content="Choose one of three weapons and journey through a branching sketchbook adventure. Explore three chapters, master three weapons, and try Boss Rush or the practice arena.">
-  <title>Stick &amp; Swing — The Living Sketchbook · WebyIsBored</title>
+  <meta name="description" content="Rescue a lost paper bird in The Lost Drawing. Explore a branching chapter, unlock keepsakes, and fight for the road home.">
+  <title>Stick &amp; Swing — The Lost Drawing · WebyIsBored</title>
   <link rel="icon" href="../../assets/hub/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="game.css?v=2.2.0">
+  <link rel="stylesheet" href="game.css?v=2.3.0">
   <link rel="stylesheet" href="../../assets/i18n/i18n.css?v=1.1.0">
-  <script src="../../assets/i18n/catalog.js?v=1.1.0" defer></script>
+  <script src="../../assets/i18n/catalog.js?v=1.2.0" defer></script>
   <script src="../../assets/i18n/i18n.js?v=1.1.0" defer></script>
-  <script type="module" src="src/app.js?v=2.2.0"></script>
+  <script type="module" src="src/app.js?v=2.3.0"></script>
 </head>
 <body>
   <div class="game-shell">
@@ -35,7 +35,8 @@
         <div class="combat-feedback" id="combat-feedback" role="status" hidden></div>
         <div class="toast" id="toast" role="status" hidden></div>
       </div>
-        <div class="tutorial-card" id="tutorial-card" hidden aria-live="polite"><div class="tutorial-heading"><span id="lesson-count">LESSON 1 / 5</span><button id="skip-tutorial" type="button">Skip lesson →</button></div><h2 id="lesson-title"></h2><p id="lesson-text"></p><small id="lesson-hint"></small></div>
+        <div class="tutorial-card" id="tutorial-card" hidden aria-live="polite"><div class="tutorial-heading"><span id="lesson-count">LESSON 1 / 6</span><button id="skip-tutorial" type="button">Skip lesson →</button></div><h2 id="lesson-title"></h2><p id="lesson-text"></p><small id="lesson-hint"></small></div>
+        <section id="chapter-guide" class="chapter-guide" hidden aria-label="Chapter objective"><strong id="objective-text" role="status"></strong><p id="coach-text"></p></section>
       <div class="touch-controls" id="touch-controls" aria-label="Touch controls"><div class="joystick" id="joystick" aria-label="Drag to move"><span class="stick-guide"></span><span id="stick-thumb"></span><small>MOVE</small></div><div class="touch-actions"><button class="touch-action guard-action" id="touch-guard" type="button" aria-label="Hold to guard; tap just before impact to parry"><span aria-hidden="true">◇</span>Guard</button><button class="touch-action dash-action" id="touch-dash" type="button" aria-label="Dash"><span aria-hidden="true">»</span>Dash<small id="touch-dash-state">Ready</small></button><button class="touch-action skill-action" id="touch-ability" type="button" aria-label="Use your weapon ability"><span aria-hidden="true">✦</span>Ability<small id="touch-ability-state">Ready</small></button><button class="touch-action attack-action" id="touch-attack" type="button" aria-label="Hold to swing your sword"><span aria-hidden="true">╱</span>Swing</button></div></div>
       <footer class="play-footer"><p class="keyboard-hints" id="keyboard-hints"><span><kbd>WASD</kbd> move</span><span><kbd>Mouse</kbd> aim</span><span><kbd>Click / Space</kbd> swing</span><span><kbd>Right click / F</kbd> guard</span><span><kbd>Shift</kbd> dash</span></p><p class="touch-hint">Aim assist is on for touch. Hold Swing to combo.</p><span class="save-note" id="save-note">Adventure checkpoints · saved on this device</span></footer>
     </main>

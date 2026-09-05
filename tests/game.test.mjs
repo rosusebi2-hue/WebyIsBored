@@ -111,14 +111,15 @@ test('invalid saves and disabled storage fail gracefully', () => {
   const game = new Game(broken); assert.doesNotThrow(() => game.startNew(false)); assert.ok(game.checkpoint);
 });
 
-test('the five practical lessons advance, cannot hurt the player, and can be skipped', () => {
+test('the six practical lessons teach movement, combat, defence and abilities and can be skipped', () => {
   const store = new SaveStore(memory()), game = new Game(store); game.startNew(true);
   assert.equal(game.mode, 'tutorial'); assert.equal(game.lesson, 0);
   game.player.x = game.target.x; game.player.y = game.target.y; steps(game, 80); assert.equal(game.lesson, 1);
   const dummy = game.enemies[0]; for (let i = 0; i < 3; i++) game.hurtEnemy(dummy, 18, 0, 'sword'); steps(game, 85); assert.equal(game.lesson, 2);
   game.player.x = game.target.x - 40; game.player.y = game.target.y; game.step(1 / 60, { ...idleInput(), moveX: 1, dashPressed: true }); steps(game, 80); assert.equal(game.lesson, 3);
   game.player.guarding = true; game.player.guardAge = 1; game.player.facing = -Math.PI / 2; game.hurtPlayer(12, game.enemies[0]); steps(game, 80); assert.equal(game.lesson, 4);
-  game.player.guarding = true; game.player.guardAge = .1; game.player.facing = -Math.PI / 2; game.hurtPlayer(12, game.enemies[0]); steps(game, 80); assert.equal(game.mode, 'route'); assert.equal(game.room, -1); assert.equal(game.player.hp, 100);
+  game.player.guarding = true; game.player.guardAge = .1; game.player.facing = -Math.PI / 2; game.hurtPlayer(12, game.enemies[0]); steps(game, 80); assert.equal(game.lesson, 5);
+  assert.equal(game.useAbility(), true); steps(game, 80); assert.equal(game.mode, 'route'); assert.equal(game.room, -1); assert.equal(game.player.hp, 100);
   assert.equal(store.profile().tutorialDone, true); assert.equal(game.stats.parries, 0);
   game.startNew(true); game.finishTutorial(); assert.equal(game.mode, 'route');
 });

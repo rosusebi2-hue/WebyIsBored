@@ -1,5 +1,32 @@
 [
   {
+    "id": "stick-and-swing-2-3",
+    "date": "2026-09-05",
+    "type": "Release",
+    "game": "Stick & Swing",
+    "version": "2.3",
+    "title": "The Lost Drawing",
+    "summary": "Rescue Rook, restore the road home, and return with a memory worth keeping. Update 2.3 introduces an authored first chapter and a home between attempts.",
+    "featured": true,
+    "sections": [
+      { "title": "A chapter with a purpose", "items": [
+        "Ten stops, branching routes, two minibosses, and a final duel with the Brute. Collect Rook’s three wing fragments and explore a vault with a hidden memory.",
+        "Cleared rooms open a visible doorway. The Brute’s second phase adds marked erasure lanes and a recovery window."
+      ] },
+      { "title": "A home between attempts", "items": [
+        "The quiet margin holds three memories and three keepsakes. Cut through enemies with a dash, unleash a perfect-block pulse, or fire an ink blade with your third swing.",
+        "Rescuing Rook and finishing the chapter unlock keepsakes for later attempts. Choose a keepsake at home; saved runs retain their original choice."
+      ] },
+      { "title": "Clearer combat, easier starts", "items": [
+        "Three new gifts change dashes, reflected shots, and combo finishers. The first reward offers these three distinct directions.",
+        "A sixth practical lesson teaches your active ability. Chapter objectives, optional guidance, attack symbols, and high-contrast outlines make the fight easier to follow."
+      ] },
+      { "title": "Your progress stays with you", "paragraph": "Existing checkpoints, mastery, settings, and language choices are preserved. Find the original expedition, Boss Rush, and practice under Extras. New chapter text and patch notes support all six website languages. Bug reports now include recent game events and checkpoint details; nothing is sent automatically." }
+    ],
+    "link": "../games/stick-and-swing/",
+    "linkLabel": "Play Chapter I"
+  },
+  {
     "id": "stick-and-swing-2-2",
     "date": "2026-09-05",
     "type": "Release",
@@ -7,7 +34,7 @@
     "version": "2.2",
     "title": "The Living Sketchbook",
     "summary": "Three chapters. New ways to fight. A book full of drawings worth finding. Update 2.2 makes the adventure bigger and gives you more ways to make it yours.",
-    "featured": true,
+    "featured": false,
     "sections": [
       {
         "title": "Beyond the second page",

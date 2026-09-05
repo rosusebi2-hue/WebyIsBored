@@ -1,4 +1,4 @@
-import { WORLD, TAU, WEAPONS, clamp, distance } from './config.js?v=2.2.0';
+import { WORLD, TAU, WEAPONS, clamp, distance } from './config.js?v=2.3.0';
 const INK = '#dce7eb', MINT = '#9aefd9', GOLD = '#ffd088', RED = '#ff827d';
 const t = text => globalThis.WebyI18n?.t(text) || text;
 export class Renderer {
@@ -71,6 +71,19 @@ export class Renderer {
       for (let y = 65; y < 550; y += 30) { c.beginPath(); c.moveTo(58, y); c.lineTo(80, y + 15); c.moveTo(880, y); c.lineTo(902, y + 15); c.stroke(); }
     }
     for (const h of g.hazards) this.hazard(h);
+    for (const b of g.bursts) this.hazard({ ...b, warning: b.delay, friendly: true });
+    if (g.runMode === 'chapter' && g.mode === 'combat') {
+      for (const f of g.fragments) {
+        if (f.collected || f.secret && g.props.some(o => o.hp > 0 && distance(o, f) < 40)) continue;
+        this.target(f, false); c.fillStyle = INK; c.textAlign = 'center'; c.font = 'bold 13px system-ui';
+        c.fillText(t(f.secret ? 'MEMORY' : 'WING FRAGMENT'), f.x, f.y - 53);
+      }
+      if (g.exitReady) {
+        c.fillStyle = '#9aefd925'; c.strokeStyle = MINT; c.lineWidth = 3;
+        c.fillRect(446, 62, 68, 70); c.strokeRect(446, 62, 68, 70);
+        c.font = 'bold 13px system-ui'; c.fillStyle = INK; c.textAlign = 'center'; c.fillText(t('CONTINUE ↑'), 480, 154);
+      }
+    }
     for (const o of g.obstacles) this.obstacle(o);
     for (const o of g.props) if (o.hp > 0) this.prop(o);
     for (const e of g.enemies) if (e.type === 'weaver' && e.hp > 0 && e.spawn <= 0) {
@@ -123,11 +136,13 @@ export class Renderer {
     const c = this.ctx, warning = h.warning > 0;
     if (h.vx && warning) { c.strokeStyle = '#ffd08855'; c.lineWidth = h.radius * 2; c.beginPath(); c.moveTo(h.x, h.y); c.lineTo(h.x + h.vx * 4.4, h.y); c.stroke(); }
     c.save(); c.fillStyle = warning ? '#ffd08812' : h.friendly ? '#ffad7835' : h.explosive ? '#ff827d65' : '#ca70be50'; c.strokeStyle = warning || h.friendly ? GOLD : '#e7a0da'; c.lineWidth = 2;
+    if (this.settings.contrast) { c.strokeStyle = '#fff'; c.lineWidth = 3; }
     c.beginPath(); c.arc(h.x, h.y, h.radius, 0, TAU); c.fill();
     if (warning) c.setLineDash([6, 7]); c.stroke(); c.setLineDash([]);
     c.clip(); c.strokeStyle = warning ? '#ffd08830' : '#edb3df55'; c.lineWidth = 1;
     for (let i = -h.radius * 2; i < h.radius * 2; i += 15) { c.beginPath(); c.moveTo(h.x - h.radius, h.y + i); c.lineTo(h.x + h.radius, h.y + i - h.radius * 2); c.stroke(); }
     c.restore();
+    if (this.settings.cues && !h.friendly) { c.fillStyle = '#fff'; c.font = 'bold 20px system-ui'; c.textAlign = 'center'; c.fillText('×', h.x, h.y + 7); }
   }
   target(t, done) {
     const c = this.ctx, pulse = this.settings.reduced ? 0 : Math.sin(this.time * 4) * 3;
@@ -163,10 +178,11 @@ export class Renderer {
     }
     if (e.state === 'recover' && !e.dummy && !e.trainer) {
       c.strokeStyle = '#9aefd950'; c.lineWidth = 1.5; c.setLineDash([2, 5]); c.beginPath(); c.arc(e.x, e.y, e.radius + 10, 0, TAU); c.stroke(); c.setLineDash([]);
+      if (this.settings.cues) { c.fillStyle = MINT; c.font = 'bold 18px system-ui'; c.textAlign = 'center'; c.fillText('+', e.x, e.y - (e.boss ? 88 : 55)); }
     }
     if (e.state !== 'windup') return;
     const progress = 1 - clamp(e.stateTime / e.windup, 0, 1);
-    c.strokeStyle = e.color; c.fillStyle = e.color + (progress > .7 ? '35' : '18'); c.lineWidth = 2;
+    c.strokeStyle = this.settings.contrast ? '#fff' : e.color; c.fillStyle = e.color + (progress > .7 ? '35' : '18'); c.lineWidth = this.settings.contrast ? 3 : 2;
     if (e.attack === 'charge' || e.attack === 'thrust') {
       const length = e.type === 'brute' ? (e.phase === 2 ? 415 : 347) : e.type === 'knight' ? 286 : 206, width = e.radius + 9;
       c.save(); c.translate(e.x, e.y); c.rotate(e.facing); c.fillRect(0, -width, length, width * 2); c.strokeRect(0, -width, length, width * 2);
@@ -180,7 +196,7 @@ export class Renderer {
       c.beginPath(); c.arc(e.x, e.y, 285, 0, TAU); c.fill(); c.setLineDash([6, 9]); c.stroke(); c.setLineDash([]);
       c.beginPath(); c.arc(e.x, e.y, Math.max(2, 62 * (1 - progress)), 0, TAU); c.stroke();
     }
-    if (e.attack === 'blot' || e.attack === 'blots') {
+    if (e.attack === 'blot' || e.attack === 'blots' || e.attack === 'redact') {
       for (const target of e.targets || []) {
         this.hazard({ ...target, warning: e.stateTime });
         c.strokeStyle = GOLD; c.lineWidth = 2; c.beginPath(); c.arc(target.x, target.y, Math.max(2, target.radius * (1 - progress)), 0, TAU); c.stroke();
@@ -196,7 +212,8 @@ export class Renderer {
     }
     c.strokeStyle = progress > .78 ? '#fff1cf' : e.color; c.lineWidth = 3;
     c.beginPath(); c.arc(e.x, e.y, e.radius + 10, -Math.PI / 2, -Math.PI / 2 + progress * TAU); c.stroke();
-    c.font = 'bold 17px system-ui'; c.textAlign = 'center'; c.fillStyle = GOLD; c.fillText('!', e.x, e.y - (e.boss ? 88 : 55));
+    c.font = 'bold 22px system-ui'; c.textAlign = 'center'; c.fillStyle = GOLD;
+    c.fillText(this.settings.cues ? (['blot', 'blots', 'redact', 'summon'].includes(e.attack) ? '×' : '◇') : '!', e.x, e.y - (e.boss ? 88 : 55));
   }
   figure(x, y, color, scale, facing, walk, sword = false, heavy = false, weapon = 'scrapsteel') {
     const c = this.ctx, stride = Math.sin(walk) * 5;
@@ -214,6 +231,7 @@ export class Renderer {
   }
   enemy(e) {
     const c = this.ctx, heavy = e.type === 'brute', scale = heavy ? 1.85 : e.boss ? 1.45 : e.type === 'warder' ? 1.2 : e.type === 'skitter' ? .92 : 1;
+    if (this.settings.contrast || e.champion) { c.strokeStyle = this.settings.contrast ? '#ffffff' : GOLD; c.lineWidth = 3; c.beginPath(); c.arc(e.x, e.y, e.radius + 5, 0, TAU); c.stroke(); }
     c.fillStyle = '#02061165'; c.beginPath(); c.ellipse(e.x, e.y + 16 * scale, e.radius + 5, e.radius * .4, 0, 0, TAU); c.fill();
     if (e.burn > 0) { c.strokeStyle = '#ffad78'; c.lineWidth = 2; c.setLineDash([3, 4]); c.beginPath(); c.arc(e.x, e.y, e.radius + 7, 0, TAU); c.stroke(); c.setLineDash([]); }
     if (e.type === 'queen') {

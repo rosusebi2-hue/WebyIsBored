@@ -13,7 +13,8 @@ node scripts/build-news.mjs
 node --test tests/*.test.mjs
 ```
 
-4. Commit both the JSON and generated `news/index.html`. Publish to GitHub and verify the Pages deployment.
+4. Add each new English text to `assets/i18n/catalog.js` with German, French, Spanish, Romanian, and Russian translations. Bump the catalog URL version on all four pages when changing translations.
+5. Commit the JSON, generated `news/index.html`, and translations. Publish to GitHub and verify the connected Vercel deployment.
 
 A post with `id: 'stick-and-swing-2-0'` is directly linkable at `/news/#stick-and-swing-2-0`. There is no public submission form or login: updates are authored in the repository and released with the site.
 

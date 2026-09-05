@@ -1,4 +1,4 @@
-import { ROUTE, RUSH_ROUTE, NODES, ENEMIES, EVENTS, WEAPONS, DEFAULT_BINDINGS, availableUpgrades, playerStats, freshStats, masteryEmpty, unlocked } from './config.js?v=2.2.0';
+import { ROUTE, RUSH_ROUTE, CHAPTER_ROUTE, KEEPSAKES, MEMORIES, keepsakeUnlocked, NODES, ENEMIES, EVENTS, WEAPONS, DEFAULT_BINDINGS, availableUpgrades, playerStats, freshStats, masteryEmpty, unlocked } from './config.js?v=2.3.0';
 const STATE_KEY = 'weby.stickSwing.state.v4';
 const SETTINGS_KEY = 'weby.stickSwing.settings.v2';
 const finite = (n, min, max) => typeof n === 'number' && Number.isFinite(n) && n >= min && n <= max;
@@ -10,7 +10,9 @@ export function normalizeProfile(raw = {}) {
     tutorialDone: p.tutorialDone === true, wins: metric(p.wins), bestTime: finite(p.bestTime, 1, 86400) ? p.bestTime : null,
     adventureWins: metric(p.adventureWins), adventureBest: finite(p.adventureBest, 1, 86400) ? p.adventureBest : null,
     bookWins: metric(p.bookWins), bookBest: finite(p.bookBest, 1, 86400) ? p.bookBest : null,
-    mastery: {}, loadouts: {}, rushBest: {},
+    mastery: {}, loadouts: {}, rushBest: {}, chapterWins: metric(p.chapterWins),
+    chapterBest: finite(p.chapterBest, 1, 86400) ? p.chapterBest : null,
+    memories: [...new Set(Array.isArray(p.memories) ? p.memories.filter(id => Object.hasOwn(MEMORIES, id)) : [])], keepsake: 'thread',
     discovered: [...new Set(Array.isArray(p.discovered) ? p.discovered.filter(id => Object.hasOwn(ENEMIES, id)) : [])],
     rescued: [...new Set(Array.isArray(p.rescued) ? p.rescued.filter(id => ['rescue', 'echo'].includes(id)) : [])],
   };
@@ -20,6 +22,7 @@ export function normalizeProfile(raw = {}) {
     for (const part of ['finisher', 'ability', 'appearance']) if (!unlocked(result, weapon, part)) result.loadouts[weapon][part] = part === 'appearance' ? 'classic' : 'standard';
     result.rushBest[weapon] = finite(p.rushBest?.[weapon], 1, 86400) ? p.rushBest[weapon] : null;
   }
+  if (keepsakeUnlocked(result, p.keepsake)) result.keepsake = p.keepsake;
   return result;
 }
 export function validateCheckpoint(raw) {
@@ -28,8 +31,9 @@ export function validateCheckpoint(raw) {
   if (raw.version === 3) value = { ...raw, version: 4, runMode: 'adventure', encounter: 'main', initialSeed: raw.seed, runId: `migrated-${raw.seed}`, forms: forms(), eventsSeen: [], eventId: null, afterReward: 'route' };
   if (!['route', 'story', 'combat', 'reward', 'shop', 'rest', 'event'].includes(value.phase)) return null;
   const { phase, room, weapon, node, path, upgrades, hp, seed, ink, stats, runMode, encounter, eventsSeen, eventId, afterReward, runId, initialSeed } = value;
-  const route = runMode === 'rush' ? RUSH_ROUTE : ROUTE;
-  if (!['adventure', 'rush'].includes(runMode) || !['main', 'secret'].includes(encounter) || !['route', 'event'].includes(afterReward)) return null;
+  const route = runMode === 'rush' ? RUSH_ROUTE : runMode === 'chapter' ? CHAPTER_ROUTE : ROUTE;
+  if (!['adventure', 'rush', 'chapter'].includes(runMode) || !['main', 'secret'].includes(encounter) || !['route', 'event'].includes(afterReward)) return null;
+  if (runMode === 'chapter' && !Object.hasOwn(KEEPSAKES, value.keepsake)) return null;
   if (typeof runId !== 'string' || !/^[a-z0-9-]{1,64}$/.test(runId) || !Number.isInteger(initialSeed) || !finite(initialSeed, 1, 4294967295)) return null;
   if (!Object.hasOwn(WEAPONS, weapon) || !Number.isInteger(room) || room < -1 || room >= route.length) return null;
   if (!unique(path) || path.length !== room + 1 || path.some((id, i) => !route[i].includes(id)) || node !== (path.at(-1) ?? null)) return null;
@@ -45,11 +49,11 @@ export function validateCheckpoint(raw) {
   if (['combat', 'reward'].includes(phase) && !['combat', 'elite', 'boss'].includes(kind)) return null;
   if (phase === 'story' && !NODES[node]?.story || phase === 'shop' && kind !== 'shop' || phase === 'rest' && kind !== 'rest') return null;
   const result = { version: 4, phase, room, weapon, node, path: [...path], upgrades: [...upgrades], hp, seed, ink, runMode, encounter, runId, initialSeed,
-    forms: forms(value.forms), eventsSeen: [...eventsSeen], eventId: phase === 'event' ? eventId : null, afterReward,
+    forms: forms(value.forms), keepsake: runMode === 'chapter' ? value.keepsake : null, eventsSeen: [...eventsSeen], eventId: phase === 'event' ? eventId : null, afterReward,
     stats: Object.fromEntries(Object.keys(freshStats()).map(k => [k, stats[k]])) };
   if (phase === 'reward') {
     const choices = value.choices, available = encounter === 'secret' && !upgrades.includes('seal') ? ['seal'] : availableUpgrades(weapon, upgrades).map(u => u.id);
-    if (node === 'knight' || !unique(choices) || choices.length !== Math.min(3, available.length) || choices.some(id => !available.includes(id))) return null;
+    if (['knight', 'eraser'].includes(node) || !unique(choices) || choices.length !== Math.min(3, available.length) || choices.some(id => !available.includes(id))) return null;
     result.choices = [...choices];
   }
   if (phase === 'shop') {
@@ -62,7 +66,7 @@ export function validateCheckpoint(raw) {
 }
 function validHistory(raw) {
   if (!Array.isArray(raw)) return [];
-  return raw.filter(r => r && typeof r.id === 'string' && r.id.length < 100 && Object.hasOwn(WEAPONS, r.weapon) && ['adventure', 'rush'].includes(r.mode) && ['victory', 'defeat'].includes(r.result) && finite(r.time, 0, 1000000) && Number.isInteger(r.seed) && finite(r.seed, 1, 4294967295) && finite(r.stop, 1, 12) && typeof r.date === 'string' && r.date.length < 40 && Array.isArray(r.path) && r.path.every(id => Object.hasOwn(NODES, id)) && Array.isArray(r.build) && r.build.every(id => availableUpgrades(r.weapon, [], true).some(u => u.id === id))).slice(0, 10).map(r => ({ id: r.id, weapon: r.weapon, mode: r.mode, result: r.result, time: r.time, seed: r.seed, stop: r.stop, date: r.date, path: [...r.path], build: [...r.build] }));
+  return raw.filter(r => r && typeof r.id === 'string' && r.id.length < 100 && Object.hasOwn(WEAPONS, r.weapon) && ['adventure', 'rush', 'chapter'].includes(r.mode) && ['victory', 'defeat'].includes(r.result) && finite(r.time, 0, 1000000) && Number.isInteger(r.seed) && finite(r.seed, 1, 4294967295) && finite(r.stop, 1, 12) && typeof r.date === 'string' && r.date.length < 40 && Array.isArray(r.path) && r.path.every(id => Object.hasOwn(NODES, id)) && Array.isArray(r.build) && r.build.every(id => availableUpgrades(r.weapon, [], true).some(u => u.id === id))).slice(0, 10).map(r => ({ id: r.id, weapon: r.weapon, mode: r.mode, result: r.result, time: r.time, seed: r.seed, stop: r.stop, date: r.date, path: [...r.path], build: [...r.build] }));
 }
 export class SaveStore {
   constructor(storage) {
@@ -79,6 +83,7 @@ export class SaveStore {
     for (const key of Object.keys(masteryEmpty())) profile.mastery[delta.weapon][key] = Math.min(1000000, profile.mastery[delta.weapon][key] + metric(delta.mastery?.[key]));
     profile.discovered = [...new Set([...profile.discovered, ...(delta.discovered || []).filter(id => Object.hasOwn(ENEMIES, id))])];
     profile.rescued = [...new Set([...profile.rescued, ...(delta.rescued || []).filter(id => ['rescue', 'echo'].includes(id))])];
+    profile.memories = [...new Set([...profile.memories, ...(delta.memories || []).filter(id => Object.hasOwn(MEMORIES, id))])];
   }
   loadRun() { return validateCheckpoint(this.state.run); }
   saveRun(value, delta) { const valid = validateCheckpoint(value); if (!valid) return false; this.state.run = valid; this.progress(delta); return this.commit(); }
@@ -93,7 +98,8 @@ export class SaveStore {
     if (victory) {
       this.state.run = null;
       const p = this.state.profile;
-      if (record.mode === 'rush') p.rushBest[record.weapon] = Math.min(p.rushBest[record.weapon] || Infinity, record.time);
+      if (record.mode === 'chapter') { p.chapterWins++; p.chapterBest = Math.min(p.chapterBest || Infinity, record.time); }
+      else if (record.mode === 'rush') p.rushBest[record.weapon] = Math.min(p.rushBest[record.weapon] || Infinity, record.time);
       else { p.bookWins++; p.bookBest = Math.min(p.bookBest || Infinity, record.time); }
     }
     return this.commit();
@@ -107,6 +113,7 @@ export class SaveStore {
     }
     if (new Set(Object.values(bindings)).size !== Object.keys(bindings).length) Object.assign(bindings, DEFAULT_BINDINGS);
     return { sound: s.sound !== false, reduced: typeof s.reduced === 'boolean' ? s.reduced : reduced, holdAttack: s.holdAttack !== false,
+      contrast: s.contrast === true, cues: s.cues !== false, coach: s.coach !== false,
       bindings, touchSide: s.touchSide === 'left' ? 'left' : 'right', touchScale: finite(s.touchScale, .85, 1.2) ? s.touchScale : 1 };
   }
   saveSettings(value) { return this.write(SETTINGS_KEY, value); }

@@ -2,7 +2,7 @@
 
 These preferences were explicitly requested by the repository owner in this project:
 
-- Release completed requested updates on GitHub and verify the existing GitHub Pages deployment. Keep using this repository and its custom domain.
+- Release completed requested updates on GitHub and verify the connected Vercel deployment. The owner moved hosting to Vercel; keep using this repository and its custom domain.
 - The owner welcomes major game redesigns when they improve the game. Preserve an understandable, polished experience rather than retaining old mechanics by default.
 - Remove obsolete files when replacing implementations. Do not keep duplicate old games in the published site; Git history already preserves earlier revisions.
 - News and Coming Soon are separate pages at `/news/` and `/coming-soon/`.

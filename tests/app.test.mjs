@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { Game } from '../games/stick-and-swing/src/engine.js?v=2.2.0';
+import { Game } from '../games/stick-and-swing/src/engine.js?v=2.3.0';
 
 // Test the actual menu/controller integration with minimal platform doubles.
 // This does not launch a browser or verify layout, pointer targeting, or pixels.
@@ -62,14 +62,14 @@ test('the UI completes weapon selection, pause/settings/build, rewards, shopping
   try {
     await import('../assets/i18n/catalog.js?integration');
     await import('../assets/i18n/i18n.js?integration');
-    await import('../games/stick-and-swing/src/app.js?v=2.2.0');
+    await import('../games/stick-and-swing/src/app.js?v=2.3.0');
     const dialog = elements.get('game-dialog'), inner = elements.get('dialog-inner');
     const click = label => { const b = inner.all().find(e => e.tagName === 'BUTTON' && !e.disabled && e.textContent.includes(label)); assert.ok(b, `No usable button: ${label} in ${dialog.dataset.view}`); b.fire('click'); };
     let now = performance.now();
     function frames(n = 1) { for (let i = 0; i < n; i++) { now += 1000 / 60; const batch = callbacks.splice(0); batch.forEach(fn => fn(now)); } }
     assert.equal(dialog.dataset.view, 'title'); assert.equal(document.body.children.length, 0, 'Startup fallback was shown');
-    WebyI18n.setLanguage('de'); assert.ok(inner.textContent.includes('Wähle deine Waffe')); WebyI18n.setLanguage('en');
-    click('Choose your weapon'); assert.equal(dialog.dataset.view, 'weapons'); click('Pagebreaker');
+    WebyI18n.setLanguage('de'); assert.ok(inner.textContent.includes('Der stille Rand.')); WebyI18n.setLanguage('en');
+    click('Extras'); click('Sketchbook expedition'); assert.equal(dialog.dataset.view, 'weapons'); click('Pagebreaker');
     assert.equal(dialog.dataset.view, 'route'); assert.equal(game.weapon, 'pagebreaker');
     click('The first line'); assert.equal(dialog.dataset.view, 'story'); click('Continue'); frames(); assert.equal(game.mode, 'combat'); assert.equal(dialog.open, false);
     const pathBeforeLanguage = [...game.path], buildBeforeLanguage = [...game.upgrades];
@@ -106,8 +106,15 @@ test('the UI completes weapon selection, pause/settings/build, rewards, shopping
     click('Workshop'); assert.equal(dialog.dataset.view, 'workshop'); assert.ok(inner.textContent.includes('Mastery carries')); click('Back');
     click('Journal'); assert.equal(dialog.dataset.view, 'journal'); assert.ok(inner.textContent.includes('The Margin Knight')); click('Back');
     click('Recent runs'); assert.equal(dialog.dataset.view, 'history'); assert.ok(inner.textContent.includes('Victory')); click('Back');
-    click('Practice arena'); assert.equal(dialog.dataset.view, 'practice'); click('Enter practice'); frames(); assert.equal(game.runMode, 'practice');
+    click('Extras'); click('Practice arena'); assert.equal(dialog.dataset.view, 'practice'); click('Enter practice'); frames(); assert.equal(game.runMode, 'practice');
     for (const e of game.enemies) { e.spawn = 0; game.hurtEnemy(e, 10000, 0, 'test'); } frames(84); assert.equal(dialog.dataset.view, 'practiceResult');
-    click('Title screen'); click('Boss Rush'); assert.equal(dialog.dataset.view, 'weapons'); click('Pagebreaker'); assert.equal(game.runMode, 'rush'); assert.equal(game.route.length, 3); assert.equal(dialog.dataset.view, 'route');
+    click('Title screen'); click('Extras'); click('Boss Rush'); assert.equal(dialog.dataset.view, 'weapons'); click('Pagebreaker'); assert.equal(game.runMode, 'rush'); assert.equal(game.route.length, 3); assert.equal(dialog.dataset.view, 'route');
+    click('Save & title'); click('New adventure'); click('Choose a weapon'); click('Scrapsteel');
+    assert.equal(game.runMode, 'chapter'); click('A line in the dark'); click('Continue'); frames(6);
+    assert.equal(elements.get('chapter-guide').hidden, false); assert.match(elements.get('objective-text').textContent, /Clear the room/);
+    game.enemies = []; game.wave = 1; frames(85); assert.equal(game.exitReady, true);
+    assert.match(elements.get('objective-text').textContent, /doorway/);
+    game.player.x = 480; game.player.y = 95; frames(8); assert.equal(dialog.dataset.view, 'reward');
+    click('Leave a mark'); frames(); assert.equal(game.mode, 'route'); assert.ok(game.upgrades.includes('afterimage'));
   } finally { Game.prototype.startNew = start; }
 });
